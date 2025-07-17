@@ -1,0 +1,116 @@
+from rest_framework import serializers
+from .models import User, Club, Category, UserCategoryRole, Training
+from django.utils.timezone import localtime
+
+class ClubSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Club
+        fields = ['id', 'name', 'description']
+
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = '__all__'  # alebo ['id', 'name'] ak chceš obmedziť
+
+
+class UserCategoryRoleSerializer(serializers.ModelSerializer):
+    category = CategorySerializer()
+    role = serializers.CharField(source='get_role_display')  # zobrazí "Hráč" namiesto "player"
+
+    class Meta:
+        model = UserCategoryRole
+        fields = ['category', 'role']
+
+
+class UserMeSerializer(serializers.ModelSerializer):
+    club = ClubSerializer()
+    roles = serializers.SerializerMethodField()
+    categories = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'club', 'roles', 'categories','email_2',
+                  'birth_date', 'number','height', 'weight', 'side']
+
+    def get_roles(self, obj):
+        roles = UserCategoryRole.objects.filter(user=obj)
+        return UserCategoryRoleSerializer(roles, many=True).data
+
+    def get_categories(self, obj):
+        return list(
+            UserCategoryRole.objects
+            .filter(user=obj)
+            .values_list('category__name', flat=True)
+            .distinct()
+        )
+
+class UserMeUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'username',
+            'email', 'email_2',
+            'birth_date', 'number',
+            'height', 'weight', 'side'
+        ]
+
+
+# serializers.py
+from rest_framework import serializers
+from .models import Training, TrainingAttendance
+
+class TrainingAttendanceSummarySerializer(serializers.Serializer):
+    present = serializers.IntegerField()
+    absent = serializers.IntegerField()
+    unknown = serializers.IntegerField()
+
+class TrainingSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    attendance_summary = serializers.SerializerMethodField()
+    user_status = serializers.SerializerMethodField()
+    date = serializers.SerializerMethodField()
+
+    def get_date(self, obj):
+        return obj.date.isoformat()
+
+    class Meta:
+        model = Training
+        fields = ['id', 'description', 'date', 'category', 'category_name', 'attendance_summary', 'user_status']
+
+    def get_attendance_summary(self, obj):
+        present = obj.attendances.filter(status='present').count()
+        absent = obj.attendances.filter(status='absent').count()
+
+        # Nájdeme všetkých hráčov (role = 'player') v danej kategórii
+        all_players = User.objects.filter(
+            roles__category=obj.category,
+            roles__role='player'  # uprav podľa tvojej hodnoty pre hráča
+        ).distinct().count()
+
+        unknown = max(all_players - (present + absent), 0)
+        print()
+        return {
+            'present': present,
+            'absent': absent,
+            'unknown': unknown
+        }
+    def get_user_status(self, obj):
+        user = self.context.get('request').user
+        attendance = obj.attendances.filter(user=user).first()
+        return attendance.status if attendance else "unknown"
+
+
+
+class TrainingCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Training
+        fields = ['category', 'date', 'description', 'location']
+
+
+
+class CategorySerializer2(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name']

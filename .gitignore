@@ -1,0 +1,40 @@
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Virtual environments
+venv/
+.env
+*.env
+
+# Django stuff:
+*.log
+*.pot
+db.sqlite3
+
+# Static and media files
+staticfiles/
+media/
+
+# VS Code / PyCharm / editors
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# __pycache__ vo všetkých podsložkách
+**/__pycache__/
+
+# .pytest_cache alebo .coverage ak testuješ
+.pytest_cache/
+.coverage
+
+# VS Code auto-backup
+*.code-workspace
+
+
+# Migrations – ak nechceš commitovať automatické migrácie (voliteľné)
+**/migrations/
+!**/migrations/__init__.py
