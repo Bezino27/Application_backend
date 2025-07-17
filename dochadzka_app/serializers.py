@@ -79,22 +79,31 @@ class TrainingSerializer(serializers.ModelSerializer):
         model = Training
         fields = ['id', 'description', 'date', 'category', 'category_name', 'attendance_summary', 'user_status']
 
-    def get_attendance_summary(self, obj):
-        present = obj.attendances.filter(status='present').count()
-        absent = obj.attendances.filter(status='absent').count()
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
 
-        # Nájdeme všetkých hráčov (role = 'player') v danej kategórii
-        all_players = User.objects.filter(
+    def get_attendance_summary(self, obj):
+        present = 0
+        absent = 0
+
+        for att in obj.attendances.all():
+            if att.status == 'present':
+                present += 1
+            elif att.status == 'absent':
+                absent += 1
+
+        # zistíme počet hráčov v kategórii (prefetchovaný queryset by nebol efektívny)
+        player_count = User.objects.filter(
             roles__category=obj.category,
-            roles__role='player'  # uprav podľa tvojej hodnoty pre hráča
+            roles__role='player'
         ).distinct().count()
 
-        unknown = max(all_players - (present + absent), 0)
-        print()
+        unknown = max(player_count - (present + absent), 0)
+
         return {
             'present': present,
             'absent': absent,
-            'unknown': unknown
+            'unknown': unknown,
         }
     def get_user_status(self, obj):
         user = self.context.get('request').user

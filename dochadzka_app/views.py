@@ -143,12 +143,14 @@ def player_trainings_view(request):
     user = request.user
     club = user.club
 
+    # Získaj kategórie, kde je hráč
     categories = Category.objects.filter(club=club, user_roles__user=user).distinct()
 
+    # Tréningy + optimalizované načítanie FK a M2M
     trainings = Training.objects.filter(
         category__in=categories,
         club=club
-    ).order_by('-date')
+    ).select_related('category').prefetch_related('attendances').order_by('-date')
 
     serializer = TrainingSerializer(trainings, many=True, context={'request': request})
     return Response(serializer.data)
