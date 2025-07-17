@@ -150,7 +150,7 @@ def player_trainings_view(request):
     trainings = Training.objects.filter(
         category__in=categories,
         club=club
-    ).select_related('category').prefetch_related('attendances').order_by('-date')
+    ).select_related('category').prefetch_related('attendances').order_by('date')
 
     serializer = TrainingSerializer(trainings, many=True, context={'request': request})
     return Response(serializer.data)
