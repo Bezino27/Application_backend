@@ -190,3 +190,53 @@ def user_categories_view(request):
     categories = Category.objects.filter(players__user=user).distinct()
     serializer = CategorySerializer2(categories, many=True)
     return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def training_detail_view(request, training_id):
+    try:
+        training = Training.objects.get(id=training_id)
+    except Training.DoesNotExist:
+        return Response({"error": "Tréning neexistuje"}, status=status.HTTP_404_NOT_FOUND)
+
+    attendances = TrainingAttendance.objects.filter(training=training).select_related('user')
+    all_players = User.objects.filter(
+        roles__category=training.category,
+        roles__role='player'
+    ).distinct()
+
+    present = []
+    absent = []
+    unknown = []
+
+    for player in all_players:
+        att = next((a for a in attendances if a.user_id == player.id), None)
+        full_name = f"{player.first_name} {player.last_name}".strip() or player.username
+
+        player_data = {
+            "id": player.id,
+            "name": full_name,
+            "number": player.number,
+            "birth_date": player.birth_date,
+        }
+
+        if att:
+            if att.status == 'present':
+                present.append(player_data)
+            elif att.status == 'absent':
+                absent.append(player_data)
+        else:
+            unknown.append(player_data)
+    return Response({
+        "id": training.id,
+        "description": training.description,
+        "date": training.date.isoformat(),
+        "location": training.location,
+        "created_by": training.created_by.username if training.created_by else "Neznámy",
+        "players": {
+            "present": present,
+            "absent": absent,
+            "unknown": unknown
+        }
+    })
