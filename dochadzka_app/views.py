@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .serializers import (ClubSerializer, CategorySerializer,
-                          UserMeUpdateSerializer,CategorySerializer2)
+                          UserMeUpdateSerializer,CategorySerializer2, UserCategoryRoleSerializer)
 
 from rest_framework import status
 from django.contrib.auth import authenticate, login
@@ -12,7 +12,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, permission_classes
-from .models import UserCategoryRole, Category, User, Club, TrainingAttendance  # predpokladám, že máš UserProfile model
+from .models import UserCategoryRole, Category, User, Club, TrainingAttendance
 from rest_framework import generics
 
 User = get_user_model()
@@ -35,7 +35,7 @@ def me_view(request):
 
     # Pôvodné GET zostáva
     roles_qs = UserCategoryRole.objects.filter(user=user)
-    roles = list(set(role.role for role in roles_qs))
+    roles = UserCategoryRoleSerializer(roles_qs, many=True).data
     assigned_categories = list(set(role.category.name for role in roles_qs))
     club_serialized = ClubSerializer(user.club).data if user.club else None
 
