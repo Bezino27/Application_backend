@@ -21,7 +21,7 @@ class UserCategoryRoleSerializer(serializers.ModelSerializer):
     role_display = serializers.CharField(source='get_role_display')  # ak chceš aj čitateľný názov
     class Meta:
         model = UserCategoryRole
-        fields = ['category', 'role']
+        fields = ['category', 'role','role_display']
 
 
 class UserMeSerializer(serializers.ModelSerializer):
