@@ -35,8 +35,12 @@ def me_view(request):
 
     # Pôvodné GET zostáva
     roles_qs = UserCategoryRole.objects.filter(user=user)
-    roles = UserCategoryRoleSerializer(roles_qs, many=True).data
-    assigned_categories = list(set(role.category.name for role in roles_qs))
+    roles = UserCategoryRoleSerializer(
+        roles_qs.exclude(category__isnull=True), many=True
+    ).data
+    assigned_categories = list(set(
+        role.category.name for role in roles_qs if role.category
+    ))
     club_serialized = ClubSerializer(user.club).data if user.club else None
 
     data = {

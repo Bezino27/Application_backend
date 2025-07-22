@@ -16,8 +16,8 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class UserCategoryRoleSerializer(serializers.ModelSerializer):
-    category = CategorySerializer()
-    role = serializers.CharField(source='get_role_display')  # zobrazí "Hráč" namiesto "player"
+    category = CategorySerializer(allow_null=True)
+    role = serializers.CharField(source='get_role_display')
 
     class Meta:
         model = UserCategoryRole
