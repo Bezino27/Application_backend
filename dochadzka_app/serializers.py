@@ -17,8 +17,8 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class UserCategoryRoleSerializer(serializers.ModelSerializer):
     category = CategorySerializer(allow_null=True)
-    role = serializers.CharField(source='get_role_display')
-
+    role = serializers.CharField()  # ✅ zachová raw hodnotu ako "player", "coach", ...
+    role_display = serializers.CharField(source='get_role_display')  # ak chceš aj čitateľný názov
     class Meta:
         model = UserCategoryRole
         fields = ['category', 'role']
