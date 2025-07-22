@@ -3,7 +3,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (me_view, login_view, RegisterView,
                     get_categories, player_trainings_view,
-                    set_training_attendance,create_training_view,user_categories_view, training_detail_viewnpm uninstall sentry-expo)
+                    set_training_attendance,create_training_view,user_categories_view, training_detail_view)
 
 app_name = 'dochadzka_app'
 
