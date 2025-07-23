@@ -77,7 +77,7 @@ class TrainingSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Training
-        fields = ['id', 'description', 'date', 'category', 'category_name', 'attendance_summary', 'user_status']
+        fields = ['id', 'description', 'date','location', 'category', 'category_name', 'attendance_summary', 'user_status']
 
     from django.contrib.auth import get_user_model
     User = get_user_model()
