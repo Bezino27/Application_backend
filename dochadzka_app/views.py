@@ -120,6 +120,11 @@ from .models import Training, Category
 from .serializers import TrainingCreateSerializer
 from datetime import datetime
 
+from django.contrib.auth import get_user_model
+from .helpers import send_push_notification
+
+User = get_user_model()
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_training_view(request):
@@ -127,12 +132,31 @@ def create_training_view(request):
     if serializer.is_valid():
         training = serializer.save(
             created_by=request.user,
-            club=request.user.club  # uprav podľa tvojej štruktúry
+            club=request.user.club
         )
+
+        # 🔔 Odoslanie push notifikácií hráčom danej kategórie
+        players = User.objects.filter(
+            user_roles__category=training.category,
+            user_roles__role='player'
+        ).distinct()
+
+        for player in players:
+            if player.expo_push_token:
+                try:
+                    send_push_notification(
+                        player.expo_push_token,
+                        "Nový tréning",
+                        f"{training.description or 'Tréning'} – {training.date.strftime('%d.%m.%Y %H:%M')}"
+                    )
+                except Exception as e:
+                    print("❌ Chyba pri notifikácii pre", player.username, ":", e)
+
         return Response({"success": True, "id": training.id}, status=status.HTTP_201_CREATED)
 
-    print("CHYBA PRI VYTVORENÍ TRÉNINGU:", serializer.errors)  # 👈 pridaj tento výpis
+    print("CHYBA PRI VYTVORENÍ TRÉNINGU:", serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 # views.py
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -244,3 +268,20 @@ def training_detail_view(request, training_id):
             "unknown": unknown
         }
     })
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def save_expo_push_token(request):
+    token = request.data.get("token")
+    if not token:
+        return Response({"error": "Token je povinný"}, status=400)
+
+    user = request.user
+    user.expo_push_token = token
+    user.save()
+
+    return Response({"success": True})

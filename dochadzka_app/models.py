@@ -16,6 +16,7 @@ class User(AbstractUser):
     club = models.ForeignKey(Club,on_delete=models.CASCADE, null=True, blank=True, related_name='users')
     # Poznámka: tu je každý user priradený k jednému klubu
     # Dodatočné polia:
+    expo_push_token = models.CharField(max_length=255, blank=True, null=True)
     birth_date = models.DateField(null=True, blank=True)
     number = models.CharField(max_length=10, blank=True)  # číslo na drese
     height = models.CharField(max_length=10, blank=True)  # výška napr. "180 cm"
@@ -121,4 +122,6 @@ class Announcement(models.Model):
     def __str__(self):
         scope = self.category.name if self.category else self.club.name
         return f"Oznámenie pre {scope} - {self.title}"
+
+
 
