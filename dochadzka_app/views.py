@@ -290,15 +290,18 @@ from rest_framework.response import Response
 @permission_classes([IsAuthenticated])
 def save_expo_push_token(request):
     token = request.data.get("token")
+    logger.info(f"🔔 Prišiel request na uloženie tokenu od {request.user.username}")
+    logger.info(f"📦 Token z requestu: {token}")
+
     if not token:
+        logger.info("❌ Token neprišiel")
         return Response({"error": "Token je povinný"}, status=400)
 
-    # Vyčisti token od iných používateľov, ktorí ho mali predtým
     User.objects.filter(expo_push_token=token).exclude(id=request.user.id).update(expo_push_token=None)
-
     request.user.expo_push_token = token
     request.user.save()
 
+    logger.info(f"✅ Token {token} uložený pre používateľa {request.user.username}")
     return Response({"success": True})
 
 from rest_framework.decorators import api_view
