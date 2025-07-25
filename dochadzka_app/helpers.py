@@ -7,6 +7,7 @@ def send_push_notification(token: str, title: str, message: str):
             "to": token,
             "title": title,
             "body": message,
+            "sound": "default",  # voliteľné, ale zvyčajne odporúčané
         })
         response.raise_for_status()
     except Exception as e:

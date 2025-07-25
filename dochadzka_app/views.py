@@ -14,7 +14,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, permission_classes
 from .models import UserCategoryRole, Category, User, Club, TrainingAttendance
 from rest_framework import generics
-
+from .helpers import send_push_notification
 User = get_user_model()
 
 
@@ -265,3 +265,14 @@ def save_expo_push_token(request):
     user.save()
 
     return Response({"success": True})
+
+
+
+@api_view(['POST'])
+def test_push(request):
+    token = request.data.get('token')
+    if not token:
+        return Response({"error": "chýba token"}, status=400)
+
+    send_push_notification(token, "Test Notifikácia", "Toto je test.")
+    return Response({"status": "odoslané"})
