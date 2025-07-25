@@ -268,11 +268,15 @@ def save_expo_push_token(request):
 
 
 
-@api_view(['POST'])
 def test_push(request):
-    token = request.data.get('token')
+    token = request.data.get("token")
     if not token:
-        return Response({"error": "chýba token"}, status=400)
+        return Response({"error": "Token chýba"}, status=400)
 
-    send_push_notification(token, "Test Notifikácia", "Toto je test.")
-    return Response({"status": "odoslané"})
+    send_push_notification(
+        token=token,
+        title="Test notifikácia",
+        message="Toto je test push správy z backendu."
+    )
+
+    return Response({"status": "Notifikácia odoslaná"})
