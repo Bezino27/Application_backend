@@ -268,15 +268,16 @@ def save_expo_push_token(request):
 
 
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+@api_view(['POST'])
 def test_push(request):
-    token = request.data.get("token")
+    token = request.data.get("token")  # teraz už bude fungovať
     if not token:
-        return Response({"error": "Token chýba"}, status=400)
+        return Response({"error": "Token is required"}, status=400)
 
-    send_push_notification(
-        token=token,
-        title="Test notifikácia",
-        message="Toto je test push správy z backendu."
-    )
+    from .helpers import send_push_notification
+    send_push_notification(token, "Test Notifikácia", "Toto je test.")
 
-    return Response({"status": "Notifikácia odoslaná"})
+    return Response({"success": True})
