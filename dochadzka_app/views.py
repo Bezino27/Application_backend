@@ -126,6 +126,9 @@ from .models import User
 from .helpers import send_push_notification  # nezabudni na import
 from .models import User  # už asi máš, ale pre istotu
 
+from .helpers import send_push_notification
+from .models import UserCategoryRole, Role
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_training_view(request):
@@ -136,25 +139,23 @@ def create_training_view(request):
             club=request.user.club
         )
 
-        # 🔔 Pošli push notifikáciu všetkým používateľom s tokenom
-        users = User.objects.exclude(expo_push_token=None)
+        # 🔔 Notifikácia len hráčom v danej kategórii
+        players = User.objects.filter(
+            roles__category=training.category,
+            roles__role=Role.PLAYER
+        ).exclude(expo_push_token=None).distinct()
 
-        for user in users:
-            try:
-                send_push_notification(
-                    user.expo_push_token,
-                    "📅 Nový tréning",
-                    f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
-                )
-                print(f"✅ Notifikácia odoslaná {user.username}")
-            except Exception as e:
-                print(f"❌ Chyba u {user.username}: {e}")
+        for player in players:
+            send_push_notification(
+                player.expo_push_token,
+                "Nový tréning",
+                f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
+            )
 
         return Response({"success": True, "id": training.id}, status=status.HTTP_201_CREATED)
 
     print("CHYBA PRI VYTVORENÍ TRÉNINGU:", serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 # views.py
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
