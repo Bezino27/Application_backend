@@ -133,24 +133,28 @@ def create_training_view(request):
             club=request.user.club
         )
 
-        # 🔔 Odoslanie push notifikácií hráčom v tejto kategórii
         players = User.objects.filter(
             roles__role='player',
             roles__category=training.category
         ).exclude(expo_push_token=None).distinct()
 
+        print(f"🔔 Posielam notifikácie pre {players.count()} hráčov")
+
         for player in players:
-            send_push_notification(
-                player.expo_push_token,
-                "Nový tréning",
-                f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
-            )
+            print(f"➡️ {player.username} - {player.expo_push_token}")
+            try:
+                send_push_notification(
+                    player.expo_push_token,
+                    "Nový tréning",
+                    f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
+                )
+            except Exception as e:
+                print(f"❌ Chyba pri posielaní notifikácie pre {player.username}: {e}")
 
         return Response({"success": True, "id": training.id}, status=status.HTTP_201_CREATED)
 
     print("CHYBA PRI VYTVORENÍ TRÉNINGU:", serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 # views.py
 from rest_framework.decorators import api_view, permission_classes
