@@ -129,6 +129,8 @@ from .models import User  # už asi máš, ale pre istotu
 from .helpers import send_push_notification
 from .models import UserCategoryRole, Role
 
+import logging
+logger = logging.getLogger(__name__)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -140,31 +142,31 @@ def create_training_view(request):
             club=request.user.club
         )
 
-        print("✅ Tréning vytvorený:", training.description)
-        print("➡️ Kategória:", training.category.name)
+        logger.info("✅ Tréning vytvorený:", training.description)
+        logger.info("➡️ Kategória:", training.category.name)
 
         players = User.objects.filter(
             roles__category=training.category,
             roles__role=Role.PLAYER
         ).exclude(expo_push_token=None).distinct()
 
-        print(f"➡️ Posielam notifikácie {players.count()} hráčom")
+        logger.info(f"➡️ Posielam notifikácie {players.count()} hráčom")
 
         for player in players:
-            print(f"📤 Posielam na {player.username} → {player.expo_push_token}")
+            logger.info(f"📤 Posielam na {player.username} → {player.expo_push_token}")
             try:
                 response = send_push_notification(
                     player.expo_push_token,
                     "Nový tréning",
                     f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
                 )
-                print(f"✅ Odpoveď: {response.status_code} - {response.text}")
+                logger.info(f"✅ Odpoveď: {response.status_code} - {response.text}")
             except Exception as e:
-                print(f"❌ Chyba pri posielaní na {player.username}: {str(e)}")
+                logger.warning(f"❌ Chyba pri posielaní na {player.username}: {str(e)}")
 
         return Response({"success": True, "id": training.id}, status=status.HTTP_201_CREATED)
 
-    print("❌ CHYBA PRI VYTVORENÍ TRÉNINGU:", serializer.errors)
+    logger.warning("❌ CHYBA PRI VYTVORENÍ TRÉNINGU:", serializer.errors)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 # views.py
 from rest_framework.decorators import api_view, permission_classes
