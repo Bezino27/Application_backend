@@ -155,9 +155,10 @@ def create_training_view(request):
         for player in players:
             logger.info(f"📤 Posielam na {player.username} → {player.expo_push_token}")
             try:
+                logger.info(f"👉 Token hráča {player.username}: {player.expo_push_token}")
+
                 response = send_push_notification(
                     player.expo_push_token,
-                    logger.info(f"👉 Token hráča {player.username}: {player.expo_push_token}"),
                     "Nový tréning",
                     f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
                 )
