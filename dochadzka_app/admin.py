@@ -25,16 +25,16 @@ class UserCategoryRoleInline(admin.TabularInline):
 class UserAdmin(BaseUserAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
         (('Doplňujúce údaje'), {'fields': ('club','email_2',
-                  'birth_date', 'number','height', 'weight', 'side',)}),
+                  'birth_date', 'number','height', 'weight', 'side', 'expo_push_token')}),
     )
 
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
         (('Doplňujúce údaje'), {'fields': ('club','email_2',
-                  'birth_date', 'number','height', 'weight', 'side',)}),
+                  'birth_date', 'number','height', 'weight', 'side', 'expo_push_token')}),
     )
 
     list_display = ('id', 'username', 'first_name', 'last_name', 'email', 'club', 'email_2',
-                  'birth_date', 'number','height', 'weight', 'side', 'is_staff')
+                  'birth_date', 'number','height', 'weight', 'side', 'expo_push_token' , 'is_staff')
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'club')
 
     inlines = [UserCategoryRoleInline]

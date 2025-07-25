@@ -281,6 +281,8 @@ def save_expo_push_token(request):
     user = request.user
     user.expo_push_token = token
     user.save()
+    print(f"✅ Token uložený pre používateľa {user.username}: {token}")
+
 
     return Response({"success": True})
 
