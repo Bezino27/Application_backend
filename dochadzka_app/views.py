@@ -123,6 +123,11 @@ from datetime import datetime
 from .helpers import send_push_notification
 from .models import User
 
+from .helpers import send_push_notification  # nezabudni na import
+from .models import User  # už asi máš, ale pre istotu
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_training_view(request):
     serializer = TrainingCreateSerializer(data=request.data)
     if serializer.is_valid():
@@ -131,19 +136,17 @@ def create_training_view(request):
             club=request.user.club
         )
 
-        # 🔔 Pošli push notifikáciu všetkým užívateľom s tokenom
-        from .helpers import send_push_notification
-        from .models import User
+        # 🔔 Pošli push notifikáciu všetkým používateľom s tokenom
+        users = User.objects.exclude(expo_push_token=None)
 
-        users_with_token = User.objects.exclude(expo_push_token=None)
-
-        for user in users_with_token:
+        for user in users:
             try:
                 send_push_notification(
                     user.expo_push_token,
-                    "Nový tréning",
+                    "📅 Nový tréning",
                     f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
                 )
+                print(f"✅ Notifikácia odoslaná {user.username}")
             except Exception as e:
                 print(f"❌ Chyba u {user.username}: {e}")
 
