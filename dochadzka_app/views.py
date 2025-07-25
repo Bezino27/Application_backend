@@ -279,15 +279,13 @@ def save_expo_push_token(request):
     if not token:
         return Response({"error": "Token je povinný"}, status=400)
 
-    user = request.user
-    user.expo_push_token = token
-    user.save()
-    print(f"✅ Token uložený pre používateľa {user.username}: {token}")
+    # Vyčisti token od iných používateľov, ktorí ho mali predtým
+    User.objects.filter(expo_push_token=token).exclude(id=request.user.id).update(expo_push_token=None)
 
+    request.user.expo_push_token = token
+    request.user.save()
 
     return Response({"success": True})
-
-
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
