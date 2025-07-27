@@ -509,7 +509,7 @@ def coach_trainings_view(request):
     club = user.club
 
     # Kategórie, kde má tréner rolu
-    coach_categories = Category.objects.filter(user_roles__user=user, user_roles__role='tréner')
+    coach_categories = Category.objects.filter(user_roles__user=user, user_roles__role='coach')
 
     trainings = Training.objects.filter(
         category__in=coach_categories,
@@ -518,3 +518,5 @@ def coach_trainings_view(request):
 
     serializer = TrainingSerializer(trainings, many=True)
     return Response(serializer.data)
+
+
