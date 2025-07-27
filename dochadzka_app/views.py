@@ -219,8 +219,8 @@ def player_trainings_view(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def set_training_attendance(request):
-    user = request.user
     training_id = request.data.get('training_id')
+    user_id = request.data.get('user_id')  # ← nová možnosť
     status_value = request.data.get('status')
 
     if status_value not in ['present', 'absent', 'unknown']:
@@ -231,8 +231,19 @@ def set_training_attendance(request):
     except Training.DoesNotExist:
         return Response({"error": "Tréning nenájdený"}, status=status.HTTP_404_NOT_FOUND)
 
+    # Ak je tréner, môže meniť aj iným hráčom
+    user_to_update = request.user
+    if user_id and int(user_id) != request.user.id:
+        is_coach = request.user.roles.filter(role='coach', category=training.category).exists()
+        if not is_coach:
+            return Response({"error": "Nemáš oprávnenie meniť účasť iným hráčom"}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            user_to_update = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"error": "Používateľ nenájdený"}, status=status.HTTP_404_NOT_FOUND)
+
     attendance, created = TrainingAttendance.objects.get_or_create(
-        user=user,
+        user=user_to_update,
         training=training,
         defaults={'status': status_value}
     )
