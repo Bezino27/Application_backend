@@ -381,3 +381,29 @@ def delete_training_view(request, training_id):
     training.delete()
     logger.info(f"✅ Tréning {training.id} úspešne zmazaný.")
     return Response({"success": True}, status=204)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def training_attendance_view(request, training_id):
+    try:
+        training = Training.objects.get(id=training_id)
+    except Training.DoesNotExist:
+        return Response({"error": "Tréning neexistuje"}, status=404)
+
+    players = User.objects.filter(
+        roles__category=training.category,
+        roles__role='player'
+    ).distinct()
+
+    data = [
+        {
+            "id": player.id,
+            "name": f"{player.first_name} {player.last_name}".strip() or player.username,
+            "number": player.number,
+            "birth_date": player.birth_date,
+        }
+        for player in players
+    ]
+
+    return Response(data)
