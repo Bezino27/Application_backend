@@ -135,41 +135,59 @@ logger = logging.getLogger(__name__)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_training_view(request):
-    serializer = TrainingCreateSerializer(data=request.data)
-    if serializer.is_valid():
-        training = serializer.save(
-            created_by=request.user,
-            club=request.user.club
-        )
+    category_ids = request.data.get("category_ids")
 
-        logger.info("✅ Tréning vytvorený:", training.description)
-        logger.info("➡️ Kategória:", training.category.name)
+    if not category_ids or not isinstance(category_ids, list):
+        return Response({"error": "Musíš zadať aspoň jednu kategóriu."}, status=400)
 
-        players = User.objects.filter(
-            roles__category=training.category,
-            roles__role=Role.PLAYER
-        ).exclude(expo_push_token=None).distinct()
+    created_trainings = []
 
-        logger.info(f"➡️ Posielam notifikácie {players.count()} hráčom")
+    for cat_id in category_ids:
+        data = {
+            "description": request.data.get("description"),
+            "location": request.data.get("location"),
+            "date": request.data.get("date"),
+            "category": cat_id
+        }
 
-        for player in players:
-            logger.info(f"📤 Posielam na {player.username} → {player.expo_push_token}")
-            try:
-                logger.info(f"👉 Token hráča {player.username}: {player.expo_push_token}")
+        serializer = TrainingCreateSerializer(data=data)
+        if serializer.is_valid():
+            training = serializer.save(
+                created_by=request.user,
+                club=request.user.club
+            )
 
-                response = send_push_notification(
-                    player.expo_push_token,
-                    "Nový tréning",
-                    f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
-                )
-                logger.info(f"✅ Odpoveď: {response.status_code} - {response.text}")
-            except Exception as e:
-                logger.warning(f"❌ Chyba pri posielaní na {player.username}: {str(e)}")
+            logger.info(f"✅ Tréning vytvorený: {training.description}")
+            logger.info(f"➡️ Kategória: {training.category.name}")
 
-        return Response({"success": True, "id": training.id}, status=status.HTTP_201_CREATED)
+            # Hráči v kategórii s push tokenom
+            players = User.objects.filter(
+                roles__category=training.category,
+                roles__role=Role.PLAYER
+            ).exclude(expo_push_token=None).distinct()
 
-    logger.warning("❌ CHYBA PRI VYTVORENÍ TRÉNINGU:", serializer.errors)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            logger.info(f"➡️ Posielam notifikácie {players.count()} hráčom")
+
+            for player in players:
+                try:
+                    response = send_push_notification(
+                        player.expo_push_token,
+                        "Nový tréning",
+                        f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
+                    )
+                    logger.info(f"📤 {player.username} → {response.status_code} - {response.text}")
+                except Exception as e:
+                    logger.warning(f"❌ Chyba pri push {player.username}: {str(e)}")
+
+            created_trainings.append(training.id)
+        else:
+            logger.warning(f"❌ Nevalidné dáta pre kategóriu {cat_id}: {serializer.errors}")
+
+    if not created_trainings:
+        return Response({"error": "Žiadny tréning nebol vytvorený."}, status=400)
+
+    return Response({"success": True, "created_ids": created_trainings}, status=201)
+
 # views.py
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
