@@ -16,7 +16,6 @@ class User(AbstractUser):
     club = models.ForeignKey(Club,on_delete=models.CASCADE, null=True, blank=True, related_name='users')
     # Poznámka: tu je každý user priradený k jednému klubu
     # Dodatočné polia:
-    expo_push_token = models.CharField(max_length=255, blank=True, null=True)
     birth_date = models.DateField(null=True, blank=True)
     number = models.CharField(max_length=10, blank=True)  # číslo na drese
     height = models.CharField(max_length=10, blank=True)  # výška napr. "180 cm"
@@ -26,6 +25,13 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
+class ExpoPushToken(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="expo_tokens")
+    token = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} – {self.token[:15]}..."
 
 class Category(models.Model):
     club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='categories')

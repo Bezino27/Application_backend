@@ -132,6 +132,20 @@ from .models import UserCategoryRole, Role
 import logging
 logger = logging.getLogger(__name__)
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import get_user_model
+from .models import Role, ExpoPushToken
+from .serializers import TrainingCreateSerializer
+from .helpers import send_push_notification  # tvoje posielanie
+import logging
+
+logger = logging.getLogger(__name__)
+User = get_user_model()
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_training_view(request):
@@ -160,24 +174,26 @@ def create_training_view(request):
             logger.info(f"✅ Tréning vytvorený: {training.description}")
             logger.info(f"➡️ Kategória: {training.category.name}")
 
-            # Hráči v kategórii s push tokenom
+            # Všetci hráči danej kategórie
             players = User.objects.filter(
                 roles__category=training.category,
                 roles__role=Role.PLAYER
-            ).exclude(expo_push_token=None).distinct()
+            ).distinct()
 
-            logger.info(f"➡️ Posielam notifikácie {players.count()} hráčom")
+            logger.info(f"➡️ Posielam notifikácie hráčom ({players.count()})")
 
             for player in players:
-                try:
-                    response = send_push_notification(
-                        player.expo_push_token,
-                        "Nový tréning",
-                        f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
-                    )
-                    logger.info(f"📤 {player.username} → {response.status_code} - {response.text}")
-                except Exception as e:
-                    logger.warning(f"❌ Chyba pri push {player.username}: {str(e)}")
+                tokens = ExpoPushToken.objects.filter(user=player).values_list("token", flat=True)
+                for token in tokens:
+                    try:
+                        response = send_push_notification(
+                            token,
+                            "Nový tréning",
+                            f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
+                        )
+                        logger.info(f"📤 {player.username} → {token} → {response.status_code} - {response.text}")
+                    except Exception as e:
+                        logger.warning(f"❌ Chyba pri push {player.username} → {token}: {str(e)}")
 
             created_trainings.append(training.id)
         else:
@@ -304,6 +320,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from .models import ExpoPushToken
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def save_expo_push_token(request):
@@ -315,12 +333,15 @@ def save_expo_push_token(request):
         logger.info("❌ Token neprišiel")
         return Response({"error": "Token je povinný"}, status=400)
 
-    User.objects.filter(expo_push_token=token).exclude(id=request.user.id).update(expo_push_token=None)
-    request.user.expo_push_token = token
-    request.user.save()
+    # Ak token už existuje pre iného používateľa, zmaž ho
+    ExpoPushToken.objects.filter(token=token).exclude(user=request.user).delete()
+
+    # Ak token ešte neexistuje pre tohto usera, vytvor
+    ExpoPushToken.objects.get_or_create(user=request.user, token=token)
 
     logger.info(f"✅ Token {token} uložený pre používateľa {request.user.username}")
     return Response({"success": True})
+
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response

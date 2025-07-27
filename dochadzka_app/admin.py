@@ -9,7 +9,7 @@ from .models import (
     TrainingAttendance,
     Match,
     MatchParticipation,
-    Announcement,
+    Announcement, ExpoPushToken,
 )
 
 
@@ -25,7 +25,7 @@ class UserCategoryRoleInline(admin.TabularInline):
 class UserAdmin(BaseUserAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
         (('Doplňujúce údaje'), {'fields': ('club','email_2',
-                  'birth_date', 'number','height', 'weight', 'side', 'expo_push_token')}),
+                  'birth_date', 'number','height', 'weight', 'side')}),
     )
 
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
@@ -34,10 +34,16 @@ class UserAdmin(BaseUserAdmin):
     )
 
     list_display = ('id', 'username', 'first_name', 'last_name', 'email', 'club', 'email_2',
-                  'birth_date', 'number','height', 'weight', 'side', 'expo_push_token' , 'is_staff')
+                  'birth_date', 'number','height', 'weight', 'side', 'is_staff')
     list_filter = ('is_staff', 'is_superuser', 'is_active', 'club')
 
     inlines = [UserCategoryRoleInline]
+
+@admin.register(ExpoPushToken)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ('user','token', 'created_at')
+
+
 
 @admin.register(Club)
 class ClubAdmin(admin.ModelAdmin):
