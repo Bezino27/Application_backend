@@ -1,4 +1,5 @@
 # odstránil som import z allauth.conftest
+from django.shortcuts import get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -113,28 +114,14 @@ def get_categories(request, club_id):
     return Response(serializer.data)
 
 
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from .models import Training, Category
-from .serializers import TrainingCreateSerializer
-from datetime import datetime
 
-from .helpers import send_push_notification
-from .models import User
-
-from .helpers import send_push_notification  # nezabudni na import
 from .models import User  # už asi máš, ale pre istotu
-
-from .helpers import send_push_notification
 from .models import UserCategoryRole, Role
-
 import logging
 logger = logging.getLogger(__name__)
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth import get_user_model
 from .models import Role, ExpoPushToken
@@ -207,7 +194,6 @@ def create_training_view(request):
 # views.py
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from dochadzka_app.models import Training, Category
 from dochadzka_app.serializers import TrainingSerializer
 
@@ -318,7 +304,6 @@ def training_detail_view(request, training_id):
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 from .models import ExpoPushToken
 
@@ -356,3 +341,40 @@ def test_push(request):
     send_push_notification(token, "Test Notifikácia", "Toto je test.")
 
     return Response({"success": True})
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_training_view(request, training_id):
+    training = get_object_or_404(Training, id=training_id)
+
+    # Over, či používateľ je tréner v tejto kategórii
+    is_coach = request.user.roles.filter(category=training.category, role=Role.COACH).exists()
+    if not is_coach:
+        return Response({"error": "Nemáš oprávnenie na zmazanie tohto tréningu."}, status=403)
+
+    # Notifikuj hráčov o zmazaní
+    players = User.objects.filter(
+        roles__category=training.category,
+        roles__role=Role.PLAYER
+    ).distinct()
+
+    logger.info(f"🗑️ Mazanie tréningu {training.id} – {training.description}")
+    logger.info(f"➡️ Posielam notifikácie o zmazaní hráčom ({players.count()})")
+
+    for player in players:
+        tokens = ExpoPushToken.objects.filter(user=player).values_list("token", flat=True)
+        for token in tokens:
+            try:
+                response = send_push_notification(
+                    token,
+                    "Zrušený tréning",
+                    f"Tréning '{training.description}' bol zrušený."
+                )
+                logger.info(f"📤 {player.username} → {token} → {response.status_code} - {response.text}")
+            except Exception as e:
+                logger.warning(f"❌ Chyba pri push {player.username} → {token}: {str(e)}")
+
+    training.delete()
+    logger.info(f"✅ Tréning {training.id} úspešne zmazaný.")
+    return Response({"success": True}, status=204)
