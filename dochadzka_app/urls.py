@@ -3,7 +3,8 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (me_view, login_view, RegisterView, save_expo_push_token, coach_players_attendance_view,
                     get_categories, player_trainings_view, delete_training_view, training_attendance_view,
-                    set_training_attendance,test_push,create_training_view, user_categories_view, training_detail_view)
+                    set_training_attendance, test_push, create_training_view, user_categories_view,
+                    training_detail_view, coach_trainings_view)
 
 app_name = 'dochadzka_app'
 
@@ -24,5 +25,6 @@ urlpatterns = [
     path("training/<int:training_id>/", delete_training_view),
     path("training-attendance/<int:training_id>/", training_attendance_view),
     path('coach-players-attendance/', coach_players_attendance_view),
+    path('coach-trainings/', coach_trainings_view),
 
 ]

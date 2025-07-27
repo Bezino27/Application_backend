@@ -500,3 +500,21 @@ def coach_players_attendance_view(request):
         })
 
     return Response(response_data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def coach_trainings_view(request):
+    user = request.user
+    club = user.club
+
+    # Kategórie, kde má tréner rolu
+    coach_categories = Category.objects.filter(user_roles__user=user, user_roles__role='tréner')
+
+    trainings = Training.objects.filter(
+        category__in=coach_categories,
+        club=club
+    ).select_related('category').order_by('-date')
+
+    serializer = TrainingSerializer(trainings, many=True)
+    return Response(serializer.data)
