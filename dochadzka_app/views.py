@@ -298,6 +298,8 @@ def training_detail_view(request, training_id):
                 present.append(player_data)
             elif att.status == 'absent':
                 absent.append(player_data)
+            elif att.status == 'unknown':
+                unknown.append(player_data)
         else:
             unknown.append(player_data)
 
