@@ -508,15 +508,16 @@ def coach_trainings_view(request):
     user = request.user
     club = user.club
 
-    # Kategórie, kde má tréner rolu
-    coach_categories = Category.objects.filter(user_roles__user=user, user_roles__role='coach')
+    # Získaj kategórie, kde má používateľ rolu coach
+    coach_categories = Category.objects.filter(club=club, user_roles__user=user, user_roles__role='coach').distinct()
 
+    # Získaj tréningy len pre tieto kategórie
     trainings = Training.objects.filter(
         category__in=coach_categories,
         club=club
-    ).select_related('category').order_by('-date')
+    ).select_related('category').prefetch_related('attendances').order_by('date')
 
-    serializer = TrainingSerializer(trainings, many=True)
+    serializer = TrainingSerializer(trainings, many=True, context={'request': request})
     return Response(serializer.data)
 
 
