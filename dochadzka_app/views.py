@@ -257,7 +257,7 @@ def user_categories_view(request):
 @permission_classes([IsAuthenticated])
 def training_detail_view(request, training_id):
     try:
-        training = Training.objects.get(id=training_id)
+        training = Training.objects.select_related('category', 'created_by').get(id=training_id)
     except Training.DoesNotExist:
         return Response({"error": "Tréning neexistuje"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -289,12 +289,15 @@ def training_detail_view(request, training_id):
                 absent.append(player_data)
         else:
             unknown.append(player_data)
+
     return Response({
         "id": training.id,
         "description": training.description,
         "date": training.date.isoformat(),
         "location": training.location,
         "created_by": training.created_by.username if training.created_by else "Neznámy",
+        "category_id": training.category.id,
+        "category_name": training.category.name,
         "players": {
             "present": present,
             "absent": absent,
