@@ -407,12 +407,17 @@ def training_attendance_view(request, training_id):
         roles__role='player'
     ).distinct()
 
+    # načítaj všetky dochádzky pre tento tréning
+    attendances = TrainingAttendance.objects.filter(training=training)
+    attendance_map = {a.user_id: a.status for a in attendances}
+
     data = [
         {
             "id": player.id,
             "name": f"{player.first_name} {player.last_name}".strip() or player.username,
             "number": player.number,
             "birth_date": player.birth_date,
+            "status": attendance_map.get(player.id, "unknown")  # ← pridaj status
         }
         for player in players
     ]
