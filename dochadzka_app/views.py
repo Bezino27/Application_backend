@@ -439,14 +439,23 @@ def coach_players_attendance_view(request):
 
     coach_categories = Category.objects.filter(user_roles__user=user, user_roles__role='coach').distinct()
 
+    # Všetci hráči v týchto kategóriách
     players = User.objects.filter(
         roles__category__in=coach_categories,
         roles__role='player'
     ).distinct()
 
+    # Odstráň používateľov, ktorí sú zároveň trénermi v tej istej kategórii
+    filtered_players = []
+    for player in players:
+        player_roles = player.roles.filter(category__in=coach_categories)
+        has_only_player_role = all(role.role == 'player' for role in player_roles)
+        if has_only_player_role:
+            filtered_players.append(player)
+
     response_data = []
 
-    for player in players:
+    for player in filtered_players:
         player_categories = coach_categories.filter(user_roles__user=player).distinct()
         trainings_by_category = {}
 
