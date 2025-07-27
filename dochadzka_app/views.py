@@ -425,3 +425,68 @@ def training_attendance_view(request, training_id):
     ]
 
     return Response(data)
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import User, Training, TrainingAttendance, Category
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def coach_players_attendance_view(request):
+    user = request.user
+
+    # Kategórie, kde má user rolu trénera
+    coach_categories = Category.objects.filter(user_roles__user=user, user_roles__role='coach').distinct()
+
+    players = User.objects.filter(
+        roles__category__in=coach_categories,
+        roles__role='player'
+    ).distinct()
+
+    response_data = []
+
+    for player in players:
+        # Tréningy, ktoré sa týkajú trénerových kategórií
+        player_trainings = Training.objects.filter(category__in=coach_categories).distinct()
+        total_trainings = player_trainings.count()
+
+        attendances = TrainingAttendance.objects.filter(user=player, training__in=player_trainings)
+
+        present_count = attendances.filter(status='present').count()
+        absent_count = attendances.filter(status='absent').count()
+        unknown_count = total_trainings - (present_count + absent_count)
+
+        # Výpočet účasti
+        attendance_percentage = (
+            (present_count / total_trainings * 100) if total_trainings > 0 else 0
+        )
+
+        training_list = []
+        for training in player_trainings.order_by('-date'):
+            att = attendances.filter(training=training).first()
+            training_list.append({
+                'id': training.id,
+                'description': training.description,
+                'date': training.date.isoformat(),
+                'location': training.location,
+                'status': att.status if att else 'unknown',
+            })
+
+        response_data.append({
+            'player_id': player.id,
+            'name': f"{player.first_name} {player.last_name}".strip() or player.username,
+            'number': player.number,
+            'birth_date': player.birth_date,
+            'attendance_summary': {
+                'total': total_trainings,
+                'present': present_count,
+                'absent': absent_count,
+                'unknown': unknown_count,
+                'percentage': round(attendance_percentage),
+            },
+            'trainings': training_list,
+        })
+
+    return Response(response_data)
