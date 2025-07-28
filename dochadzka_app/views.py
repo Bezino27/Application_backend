@@ -521,3 +521,25 @@ def coach_trainings_view(request):
     return Response(serializer.data)
 
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password_view(request):
+    user = request.user
+    data = request.data
+    old_password = data.get('old_password')
+    new_password = data.get('new_password')
+
+    if not user.check_password(old_password):
+        return Response({'detail': 'Zlé pôvodné heslo.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not new_password or len(new_password) < 6:
+        return Response({'detail': 'Nové heslo musí mať aspoň 6 znakov.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save()
+    return Response({'detail': 'Heslo úspešne zmenené.'})
