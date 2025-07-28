@@ -541,9 +541,8 @@ def register_user(request):
     password2 = data.get('password2')
     first_name = data.get('first_name')
     last_name = data.get('last_name')
-    birth_date = data.get('birth_date')  # očakávame vo formáte "YYYY-MM-DD"
+    birth_date = data.get('birth_date')
 
-    # Validácie
     if not all([username, password, password2, first_name, last_name, birth_date]):
         return Response({'detail': 'Vyplň všetky polia.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -553,15 +552,12 @@ def register_user(request):
     if User.objects.filter(username=username).exists():
         return Response({'detail': 'Používateľské meno už existuje.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    try:
-        user = User.objects.create_user(
-            username=username,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            birth_date=birth_date
-        )
-    except Exception as e:
-        return Response({'detail': f'Chyba pri registrácii: {str(e)}'}, status=500)
+    user = User.objects.create_user(
+        username=username,
+        password=password,
+        first_name=first_name,
+        last_name=last_name,
+        birth_date=birth_date  # ✅ priamo pri vytvorení
+    )
 
     return Response({'detail': 'Registrácia prebehla úspešne.'}, status=status.HTTP_201_CREATED)
