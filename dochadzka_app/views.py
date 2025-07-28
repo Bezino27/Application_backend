@@ -60,26 +60,6 @@ def me_view(request):
 
     return Response(data)
 
-class RegisterView(APIView):
-    def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
-        role = request.data.get('role')
-
-        if not username or not password or not role:
-            return Response({'error': 'Missing username, password, or role'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if User.objects.filter(username=username).exists():
-            return Response({'error': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
-
-        user = User.objects.create_user(username=username, password=password)
-
-        # Tu vytvoríš UserProfile a priradíš rolu podľa toho, ako máš modely
-        # Príklad (ak máš UserProfile model s FK na User):
-        User.objects.create(user=user, role=role)
-
-        return Response({'message': 'User registered successfully'}, status=status.HTTP_201_CREATED)
-
 
 @csrf_exempt  # Dočasne vypne CSRF ochranu, ak testuješ cez Postman/React
 def login_view(request):
