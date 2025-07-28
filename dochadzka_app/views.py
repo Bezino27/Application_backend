@@ -14,8 +14,7 @@ import json
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, permission_classes
 from .models import UserCategoryRole, Category, User, Club, TrainingAttendance
-from rest_framework import generics
-from .helpers import send_push_notification
+
 User = get_user_model()
 
 
@@ -552,6 +551,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User
 
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -565,12 +565,24 @@ def register_user(request):
 
     if not all([username, password, password2, first_name, last_name, birth_date]):
         return Response({'detail': 'Vyplň všetky polia.'}, status=status.HTTP_400_BAD_REQUEST)
+
     if password != password2:
         return Response({'detail': 'Heslá sa nezhodujú.'}, status=status.HTTP_400_BAD_REQUEST)
+
     if User.objects.filter(username=username).exists():
         return Response({'detail': 'Používateľské meno už existuje.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    user = User.objects.create_user(username=username, password=password, first_name=first_name, last_name=last_name)
-    User.objects.create(user=user, birth_date=birth_date)
+    user = User.objects.create_user(
+        username=username,
+        password=password,
+        first_name=first_name,
+        last_name=last_name
+    )
+
+    # Vytvor profil alebo nastav birth_date priamo, ak je súčasťou User modelu
+    try:
+        User.objects.create(user=user, birth_date=birth_date)
+    except Exception as e:
+        return Response({'detail': f'Chyba pri ukladaní profilu: {str(e)}'}, status=500)
 
     return Response({'detail': 'Registrácia prebehla úspešne.'}, status=status.HTTP_201_CREATED)
