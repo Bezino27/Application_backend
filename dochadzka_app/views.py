@@ -532,6 +532,15 @@ from rest_framework import status
 from django.contrib.auth.models import User
 
 
+# BACKEND - views.py
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -552,12 +561,14 @@ def register_user(request):
     if User.objects.filter(username=username).exists():
         return Response({'detail': 'Používateľské meno už existuje.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    user = User.objects.create_user(
-        username=username,
-        password=password,
-        first_name=first_name,
-        last_name=last_name,
-        birth_date=birth_date  # ✅ priamo pri vytvorení
-    )
-
-    return Response({'detail': 'Registrácia prebehla úspešne.'}, status=status.HTTP_201_CREATED)
+    try:
+        user = User.objects.create_user(
+            username=username,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            birth_date=birth_date
+        )
+        return Response({'detail': 'Registrácia prebehla úspešne.'}, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'detail': f'Chyba pri vytváraní užívateľa: {str(e)}'}, status=500)
