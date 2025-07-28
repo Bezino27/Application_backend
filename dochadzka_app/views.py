@@ -543,3 +543,34 @@ def change_password_view(request):
     user.set_password(new_password)
     user.save()
     return Response({'detail': 'Heslo úspešne zmenené.'})
+
+
+# views.py
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth.models import User
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register_user(request):
+    data = request.data
+    username = data.get('username')
+    password = data.get('password')
+    password2 = data.get('password2')
+    first_name = data.get('first_name')
+    last_name = data.get('last_name')
+    birth_date = data.get('birth_date')
+
+    if not all([username, password, password2, first_name, last_name, birth_date]):
+        return Response({'detail': 'Vyplň všetky polia.'}, status=status.HTTP_400_BAD_REQUEST)
+    if password != password2:
+        return Response({'detail': 'Heslá sa nezhodujú.'}, status=status.HTTP_400_BAD_REQUEST)
+    if User.objects.filter(username=username).exists():
+        return Response({'detail': 'Používateľské meno už existuje.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.create_user(username=username, password=password, first_name=first_name, last_name=last_name)
+    User.objects.create(user=user, birth_date=birth_date)
+
+    return Response({'detail': 'Registrácia prebehla úspešne.'}, status=status.HTTP_201_CREATED)
