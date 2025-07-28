@@ -577,3 +577,11 @@ def register_user(request):
     )
 
     return Response({'detail': 'Registrácia prebehla úspešne.'}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def list_clubs(request):
+    clubs = Club.objects.all()
+    data = [{"id": club.id, "name": club.name} for club in clubs]
+    return Response(data)
