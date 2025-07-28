@@ -551,8 +551,9 @@ def register_user(request):
     first_name = data.get('first_name')
     last_name = data.get('last_name')
     birth_date = data.get('birth_date')
+    club_id = data.get('club_id')
 
-    if not all([username, password, password2, first_name, last_name, birth_date]):
+    if not all([username, password, password2, first_name, last_name, birth_date, club_id]):
         return Response({'detail': 'Vyplň všetky polia.'}, status=status.HTTP_400_BAD_REQUEST)
 
     if password != password2:
@@ -562,13 +563,17 @@ def register_user(request):
         return Response({'detail': 'Používateľské meno už existuje.'}, status=status.HTTP_400_BAD_REQUEST)
 
     try:
-        user = User.objects.create_user(
-            username=username,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
-            birth_date=birth_date
-        )
-        return Response({'detail': 'Registrácia prebehla úspešne.'}, status=status.HTTP_201_CREATED)
-    except Exception as e:
-        return Response({'detail': f'Chyba pri vytváraní užívateľa: {str(e)}'}, status=500)
+        club = Club.objects.get(id=club_id)
+    except Club.DoesNotExist:
+        return Response({'detail': 'Zvolený klub neexistuje.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = User.objects.create_user(
+        username=username,
+        password=password,
+        first_name=first_name,
+        last_name=last_name,
+        birth_date=birth_date,
+        club=club
+    )
+
+    return Response({'detail': 'Registrácia prebehla úspešne.'}, status=status.HTTP_201_CREATED)
