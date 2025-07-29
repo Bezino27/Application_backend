@@ -602,15 +602,17 @@ def chat_messages_view(request, user_id):
     current_user = request.user
 
     if request.method == 'GET':
-        # Označ všetky prijaté správy ako prečítané
+        # ✅ Označíme všetky prijaté správy ako prečítané
         Message.objects.filter(sender_id=user_id, recipient=current_user, read=False).update(read=True)
 
         messages = Message.objects.filter(
             Q(sender=current_user, recipient_id=user_id) |
             Q(sender_id=user_id, recipient=current_user)
         ).order_by('timestamp')
+
         serializer = MessageSerializer(messages, many=True)
         return Response(serializer.data)
+
     elif request.method == 'POST':
         data = request.data.copy()
         data['sender'] = current_user.id  # zabezpečíme správneho odosielateľa
@@ -619,8 +621,6 @@ def chat_messages_view(request, user_id):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
