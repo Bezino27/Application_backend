@@ -622,7 +622,7 @@ def chat_messages_view(request, user_id):
         paginated = messages[offset:offset+limit]
 
         # Otoč späť do prirodzeného poradia (od najstaršej po najnovšiu)
-        serializer = MessageSerializer(paginated[::-1], many=True)
+        serializer = MessageSerializer(paginated[::-1], many=True, context={"request": request})
         return Response(serializer.data)
 
     elif request.method == 'POST':
@@ -706,6 +706,7 @@ def chat_users_list(request):
 
 
 @api_view(['POST'])
+
 @permission_classes([IsAuthenticated])
 def add_reaction(request, message_id):
     """

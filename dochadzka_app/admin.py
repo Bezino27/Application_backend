@@ -11,7 +11,7 @@ from .models import (
     TrainingAttendance,
     Match,
     MatchParticipation,
-    Announcement, ExpoPushToken, Message,
+    Announcement, ExpoPushToken, Message, MessageReaction,
 )
 
 
@@ -49,6 +49,9 @@ class CategoryAdmin(admin.ModelAdmin):
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('sender','recipient', 'text', 'timestamp', 'read')
 
+@admin.register(MessageReaction)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ('message', 'user', 'created_at', 'emoji')
 
 
 @admin.register(Club)

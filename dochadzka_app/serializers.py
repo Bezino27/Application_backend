@@ -138,15 +138,33 @@ class MessageReactionSerializer(serializers.ModelSerializer):
 
 
 class MessageSerializer(serializers.ModelSerializer):
-    sender_name = serializers.CharField(source='sender.username', read_only=True)
-    recipient_name = serializers.CharField(source='recipient.username', read_only=True)
-    reactions = MessageReactionSerializer(many=True, read_only=True)
+    sender_name = serializers.SerializerMethodField()
+    recipient_name = serializers.SerializerMethodField()
+    reaction = serializers.SerializerMethodField()
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'recipient', 'text', 'timestamp', 'read', 'sender_name', 'recipient_name', 'reactions']
+        fields = [
+            'id',
+            'sender',
+            'recipient',
+            'text',
+            'timestamp',
+            'sender_name',
+            'recipient_name',
+            'reaction',
+        ]
 
+    def get_sender_name(self, obj):
+        return f"{obj.sender.first_name} {obj.sender.last_name}".strip()
 
+    def get_recipient_name(self, obj):
+        return f"{obj.recipient.first_name} {obj.recipient.last_name}".strip()
+
+    def get_reaction(self, obj):
+        user = self.context['request'].user
+        reaction = obj.reactions.filter(user=user).first()
+        return reaction.emoji if reaction else None
 
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
