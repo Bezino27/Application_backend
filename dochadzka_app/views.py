@@ -44,6 +44,7 @@ def me_view(request):
     club_serialized = ClubSerializer(user.club).data if user.club else None
 
     data = {
+        'id': user.id,
         'username': user.username,
         'name': f"{user.first_name} {user.last_name}",
         'email': user.email,
