@@ -590,12 +590,14 @@ def list_clubs(request):
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from rest_framework import status
-from django.db.models import Q
 from .models import Message
 from .serializers import MessageSerializer
 
+
+from .models import ExpoPushToken  # 👈 ak máš tento model
+import logging
+logger = logging.getLogger(__name__)  # pre logovanie chýb
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -603,14 +605,11 @@ def chat_messages_view(request, user_id):
     current_user = request.user
 
     if request.method == 'GET':
-        # ✅ Označíme ako prečítané
         Message.objects.filter(sender_id=user_id, recipient=current_user, read=False).update(read=True)
-
         messages = Message.objects.filter(
             Q(sender=current_user, recipient_id=user_id) |
             Q(sender_id=user_id, recipient=current_user)
         ).order_by('timestamp')
-
         serializer = MessageSerializer(messages, many=True)
         return Response(serializer.data)
 
@@ -621,20 +620,25 @@ def chat_messages_view(request, user_id):
         if serializer.is_valid():
             message = serializer.save()
 
-            # 🔔 Notifikácia prijímateľovi
-            recipient = message.recipient
-            if hasattr(recipient, "expo_push_token") and recipient.expo_push_token:
-                full_name = f"{current_user.first_name} {current_user.last_name}".strip()
-                preview = message.text[:80] + ("..." if len(message.text) > 80 else "")
-                send_push_notification(
-                    token=recipient.expo_push_token,
-                    title=f"Nová správa od {full_name}",
-                    message=preview
-                )
+            # 🔔 Získaj všetky push tokeny pre príjemcu
+            tokens = ExpoPushToken.objects.filter(user=message.recipient).values_list("token", flat=True)
+            full_name = f"{current_user.first_name} {current_user.last_name}".strip()
+            preview = message.text[:80] + ("..." if len(message.text) > 80 else "")
+
+            for token in tokens:
+                try:
+                    response = send_push_notification(
+                        token,
+                        title=f"Nová správa od {full_name}",
+                        message=preview
+                    )
+                    logger.info(f"📤 {message.recipient.username} → {token} → {response.status_code} - {response.text}")
+                except Exception as e:
+                    logger.warning(f"❌ Chyba pri push {message.recipient.username} → {token}: {str(e)}")
 
             return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
