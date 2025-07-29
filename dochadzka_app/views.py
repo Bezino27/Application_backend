@@ -628,23 +628,46 @@ from .serializers import SimpleUserSerializer  # ↓ pripravíme
 
 User = get_user_model()
 
+from django.db.models import Q, Max
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def chat_users_list(request):
     user = request.user
     club = user.club
 
-    # Všetci ostatní používatelia v tom istom klube
     users = User.objects.filter(club=club).exclude(id=user.id).distinct()
 
     filtered_users = []
     for u in users:
         roles = UserCategoryRole.objects.filter(user=u).values_list("role", flat=True)
         if any(r.lower() in ['coach', 'admin'] for r in roles):
+            # Posledná správa medzi user a u
+            last_msg = Message.objects.filter(
+                Q(sender=user, recipient=u) | Q(sender=u, recipient=user)
+            ).order_by("-timestamp").first()
+
+            last_timestamp = last_msg.timestamp if last_msg else None
+
+            # Neprečítané správy od u pre mňa
+            has_unread = Message.objects.filter(sender=u, recipient=user, read=False).exists()
+
             filtered_users.append({
                 "id": u.id,
                 "username": u.username,
                 "full_name": f"{u.first_name} {u.last_name}".strip(),
+                "last_message_timestamp": last_timestamp,
+                "has_unread": has_unread,
             })
 
-    return Response(filtered_users)
+    # 🔁 zoradíme tak, že najskôr tí s neprečítanou správou, potom podľa poslednej správy
+    sorted_users = sorted(
+        filtered_users,
+        key=lambda x: (
+            not x["has_unread"],  # False (neprečítané) = vyššie
+            x["last_message_timestamp"] or ""
+        ),
+        reverse=True
+    )
+
+    return Response(sorted_users)
