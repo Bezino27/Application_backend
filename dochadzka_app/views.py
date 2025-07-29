@@ -649,8 +649,7 @@ def chat_users_list(request):
                 Q(sender=user, recipient=u) | Q(sender=u, recipient=user)
             ).order_by("-timestamp").first()
 
-            last_timestamp = last_msg.timestamp.strftime('%Y-%m-%dT%H:%M:%S') if last_msg else None
-            # Neprečítané správy od u pre mňa
+            last_timestamp = last_msg.timestamp.isoformat() if last_msg else None            # Neprečítané správy od u pre mňa
             has_unread = Message.objects.filter(sender=u, recipient=user, read=False).exists()
 
             filtered_users.append({
