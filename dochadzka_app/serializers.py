@@ -128,7 +128,8 @@ class CategorySerializer2(serializers.ModelSerializer):
 
 from rest_framework import serializers
 from .models import Message
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.CharField(source='sender.username', read_only=True)
@@ -137,3 +138,5 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ['id', 'sender', 'recipient', 'text', 'timestamp', 'read', 'sender_name', 'recipient_name']
+
+
