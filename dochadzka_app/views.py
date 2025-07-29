@@ -625,32 +625,55 @@ def chat_messages_view(request, user_id):
         serializer = MessageSerializer(paginated[::-1], many=True, context={"request": request})
         return Response(serializer.data)
 
+
     elif request.method == 'POST':
+
         data = request.data.copy()
+
         data['sender'] = current_user.id
-        serializer = MessageSerializer(data=data)
+
+        serializer = MessageSerializer(data=data, context={"request": request})
+
         if serializer.is_valid():
+
             message = serializer.save()
 
-            # 🔔 Pošli push notifikácie všetkým tokenom príjemcu
+            # 🔔 Posielanie notifikácií
+
             tokens = ExpoPushToken.objects.filter(user=message.recipient).values_list("token", flat=True)
+
             full_name = f"{current_user.first_name} {current_user.last_name}".strip()
+
             preview = message.text[:80] + ("..." if len(message.text) > 80 else "")
 
             for token in tokens:
+
                 try:
+
                     response = send_push_notification(
+
                         token,
+
                         title=f"Nová správa od {full_name}",
+
                         message=preview
+
                     )
+
                     logger.info(f"📤 {message.recipient.username} → {token} → {response.status_code} - {response.text}")
+
                 except Exception as e:
+
                     logger.warning(f"❌ Chyba pri push {message.recipient.username} → {token}: {str(e)}")
 
-            return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
+            # ✨ Vždy vráť validný JSON
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(MessageSerializer(message, context={"request": request}).data, status=201)
+
+        # ❗ Ak je invalid
+
+        return Response(serializer.errors, status=400)
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
