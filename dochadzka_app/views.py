@@ -616,3 +616,21 @@ def chat_messages_view(request, user_id):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.contrib.auth import get_user_model
+from .serializers import SimpleUserSerializer  # ↓ pripravíme
+
+User = get_user_model()
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def chat_users_list(request):
+    current_user = request.user
+    users = User.objects.exclude(id=current_user.id).order_by('first_name', 'last_name')
+    serializer = SimpleUserSerializer(users, many=True)
+    return Response(serializer.data)
