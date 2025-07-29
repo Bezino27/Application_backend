@@ -637,13 +637,19 @@ from django.db.models import Q
 def chat_users_list(request):
     user = request.user
     club = user.club
+    roles = UserCategoryRole.objects.filter(user=user).values_list("role", flat=True)
+    is_coach_or_admin = any(r.lower() in ['coach', 'admin'] for r in roles)
 
-    users = User.objects.filter(club=club).exclude(id=user.id).distinct()
+    users = User.objects.filter(club=club).exclude(id=user.id)
 
     filtered_users = []
     for u in users:
-        roles = UserCategoryRole.objects.filter(user=u).values_list("role", flat=True)
-        if any(r.lower() in ['coach', 'admin'] for r in roles):
+        u_roles = UserCategoryRole.objects.filter(user=u).values_list("role", flat=True)
+        u_is_coach_or_admin = any(r.lower() in ['coach', 'admin'] for r in u_roles)
+
+        # ⬇️ Ak si tréner alebo admin, zobraz všetkých
+        # ⬇️ Inak zobraz len trénerov a adminov
+        if is_coach_or_admin or u_is_coach_or_admin:
             messages_between = Message.objects.filter(
                 Q(sender=user, recipient=u) | Q(sender=u, recipient=user)
             )
@@ -662,8 +668,10 @@ def chat_users_list(request):
 
     sorted_users = sorted(
         filtered_users,
-        key=lambda x: x["last_message_timestamp"] or "",
-        reverse=True
+        key=lambda x: (
+            -int(x["has_unread"]),
+            x["last_message_timestamp"] or ""
+        )
     )
 
     return Response(sorted_users)
