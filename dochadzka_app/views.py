@@ -602,16 +602,8 @@ def chat_messages_view(request, user_id):
     current_user = request.user
 
     if request.method == 'GET':
-        if request.method == 'GET':
-            # Označ všetky prijaté správy ako prečítané
-            Message.objects.filter(sender_id=user_id, recipient=current_user, read=False).update(read=True)
-
-            messages = Message.objects.filter(
-                Q(sender=current_user, recipient_id=user_id) |
-                Q(sender_id=user_id, recipient=current_user)
-            ).order_by('timestamp')
-            serializer = MessageSerializer(messages, many=True)
-            return Response(serializer.data)
+        # Označ všetky prijaté správy ako prečítané
+        Message.objects.filter(sender_id=user_id, recipient=current_user, read=False).update(read=True)
 
         messages = Message.objects.filter(
             Q(sender=current_user, recipient_id=user_id) |
@@ -619,7 +611,6 @@ def chat_messages_view(request, user_id):
         ).order_by('timestamp')
         serializer = MessageSerializer(messages, many=True)
         return Response(serializer.data)
-
     elif request.method == 'POST':
         data = request.data.copy()
         data['sender'] = current_user.id  # zabezpečíme správneho odosielateľa
