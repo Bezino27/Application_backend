@@ -1,5 +1,6 @@
 # odstránil som import z allauth.conftest
 from django.shortcuts import get_object_or_404
+from numpy import number
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -595,7 +596,7 @@ from .models import Message, MessageReaction
 from .serializers import MessageSerializer, MessageReactionSerializer
 
 
-from .models import ExpoPushToken  # 👈 ak máš tento model
+from .models import ExpoPushToken  #
 import logging
 logger = logging.getLogger(__name__)  # pre logovanie chýb
 
@@ -627,51 +628,28 @@ def chat_messages_view(request, user_id):
 
 
     elif request.method == 'POST':
-
         data = request.data.copy()
-
         data['sender'] = current_user.id
-
         serializer = MessageSerializer(data=data, context={"request": request})
-
         if serializer.is_valid():
-
             message = serializer.save()
-
-            # 🔔 Posielanie notifikácií
-
+            # Posielanie notifikácií
             tokens = ExpoPushToken.objects.filter(user=message.recipient).values_list("token", flat=True)
-
             full_name = f"{current_user.first_name} {current_user.last_name}".strip()
-
             preview = message.text[:80] + ("..." if len(message.text) > 80 else "")
-
             for token in tokens:
-
                 try:
-
                     response = send_push_notification(
-
                         token,
-
                         title=f"Nová správa od {full_name}",
-
                         message=preview
-
                     )
-
                     logger.info(f"📤 {message.recipient.username} → {token} → {response.status_code} - {response.text}")
-
                 except Exception as e:
-
                     logger.warning(f"❌ Chyba pri push {message.recipient.username} → {token}: {str(e)}")
-
-            # ✨ Vždy vráť validný JSON
-
+            # Vždy vráť validný JSON
             return Response(MessageSerializer(message, context={"request": request}).data, status=201)
-
-        # ❗ Ak je invalid
-
+        # Ak je invalid
         return Response(serializer.errors, status=400)
 
 from rest_framework.decorators import api_view, permission_classes
@@ -699,8 +677,8 @@ def chat_users_list(request):
         u_roles = UserCategoryRole.objects.filter(user=u).values_list("role", flat=True)
         u_is_coach_or_admin = any(r.lower() in ['coach', 'admin'] for r in u_roles)
 
-        # ⬇️ Ak si tréner alebo admin, zobraz všetkých
-        # ⬇️ Inak zobraz len trénerov a adminov
+        # Ak si tréner alebo admin, zobraz všetkých
+        # Inak zobraz len trénerov a adminov
         if is_coach_or_admin or u_is_coach_or_admin:
             messages_between = Message.objects.filter(
                 Q(sender=user, recipient=u) | Q(sender=u, recipient=user)
@@ -716,6 +694,7 @@ def chat_users_list(request):
                 "full_name": f"{u.first_name} {u.last_name}".strip(),
                 "last_message_timestamp": last_timestamp,
                 "has_unread": has_unread,
+                "number": u.number,
             })
 
     sorted_users = sorted(
