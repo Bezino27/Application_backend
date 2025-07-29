@@ -631,7 +631,20 @@ User = get_user_model()
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def chat_users_list(request):
-    current_user = request.user
-    users = User.objects.exclude(id=current_user.id).order_by('first_name', 'last_name')
-    serializer = SimpleUserSerializer(users, many=True)
-    return Response(serializer.data)
+    user = request.user
+    club = user.club
+
+    # Všetci ostatní používatelia v tom istom klube
+    users = User.objects.filter(club=club).exclude(id=user.id).distinct()
+
+    filtered_users = []
+    for u in users:
+        roles = UserCategoryRole.objects.filter(user=u).values_list("role", flat=True)
+        if any(r.lower() in ['tréner', 'admin'] for r in roles):
+            filtered_users.append({
+                "id": u.id,
+                "username": u.username,
+                "full_name": f"{u.first_name} {u.last_name}".strip(),
+            })
+
+    return Response(filtered_users)
