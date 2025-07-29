@@ -648,7 +648,7 @@ def chat_users_list(request):
                 Q(sender=user, recipient=u) | Q(sender=u, recipient=user)
             )
 
-            last_msg = messages_between.order_by("-timestamp").first()
+            last_msg = messages_between.order_by("timestamp").first()
             last_timestamp = last_msg.timestamp.isoformat() if last_msg else None
             has_unread = messages_between.filter(sender=u, recipient=user, read=False).exists()
 
