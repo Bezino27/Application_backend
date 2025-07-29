@@ -596,7 +596,6 @@ from django.db.models import Q
 from .models import Message
 from .serializers import MessageSerializer
 
-import requests
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -604,6 +603,7 @@ def chat_messages_view(request, user_id):
     current_user = request.user
 
     if request.method == 'GET':
+        # ✅ Označíme ako prečítané
         Message.objects.filter(sender_id=user_id, recipient=current_user, read=False).update(read=True)
 
         messages = Message.objects.filter(
@@ -621,23 +621,16 @@ def chat_messages_view(request, user_id):
         if serializer.is_valid():
             message = serializer.save()
 
-            # 🔔 PUSH NOTIFIKÁCIA
+            # 🔔 Notifikácia prijímateľovi
             recipient = message.recipient
             if hasattr(recipient, "expo_push_token") and recipient.expo_push_token:
-                try:
-                    requests.post("https://exp.host/--/api/v2/push/send", json={
-                        "to": recipient.expo_push_token,
-                        "title": f"Nová správa od {current_user.first_name}",
-                        "body": message.text[:80] + ("..." if len(message.text) > 80 else ""),
-                        "sound": "default",
-                        "data": {
-                            "type": "chat",
-                            "sender_id": current_user.id,
-                            "sender_name": f"{current_user.first_name} {current_user.last_name}",
-                        }
-                    })
-                except Exception as e:
-                    print("❌ Chyba pri odosielaní push notifikácie:", e)
+                full_name = f"{current_user.first_name} {current_user.last_name}".strip()
+                preview = message.text[:80] + ("..." if len(message.text) > 80 else "")
+                send_push_notification(
+                    token=recipient.expo_push_token,
+                    title=f"Nová správa od {full_name}",
+                    message=preview
+                )
 
             return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
