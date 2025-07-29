@@ -1,3 +1,5 @@
+from pyexpat.errors import messages
+
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from .models import (
@@ -9,7 +11,7 @@ from .models import (
     TrainingAttendance,
     Match,
     MatchParticipation,
-    Announcement, ExpoPushToken,
+    Announcement, ExpoPushToken, Message,
 )
 
 
@@ -42,6 +44,10 @@ class UserAdmin(BaseUserAdmin):
 @admin.register(ExpoPushToken)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('user','token', 'created_at')
+
+@admin.register(Message)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ('sender','recipient', 'text', 'timestamp', 'read')
 
 
 
