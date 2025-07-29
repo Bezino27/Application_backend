@@ -585,3 +585,34 @@ def list_clubs(request):
     clubs = Club.objects.all()
     data = [{"id": club.id, "name": club.name} for club in clubs]
     return Response(data)
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Q
+from .models import Message
+from .serializers import MessageSerializer
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def chat_messages_view(request, user_id):
+    current_user = request.user
+
+    if request.method == 'GET':
+        messages = Message.objects.filter(
+            Q(sender=current_user, recipient_id=user_id) |
+            Q(sender_id=user_id, recipient=current_user)
+        ).order_by('timestamp')
+        serializer = MessageSerializer(messages, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        data = request.data.copy()
+        data['sender'] = current_user.id  # zabezpečíme správneho odosielateľa
+        serializer = MessageSerializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
