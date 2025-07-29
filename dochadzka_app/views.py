@@ -605,12 +605,24 @@ def chat_messages_view(request, user_id):
     current_user = request.user
 
     if request.method == 'GET':
+        # Parametre pre pagináciu
+        offset = int(request.GET.get("offset", 0))
+        limit = int(request.GET.get("limit", 20))
+
+        # Označíme prijaté správy ako prečítané
         Message.objects.filter(sender_id=user_id, recipient=current_user, read=False).update(read=True)
+
+        # Vyber všetky správy medzi užívateľmi
         messages = Message.objects.filter(
             Q(sender=current_user, recipient_id=user_id) |
             Q(sender_id=user_id, recipient=current_user)
-        ).order_by('timestamp')
-        serializer = MessageSerializer(messages, many=True)
+        ).order_by('-timestamp')  # najnovšie ako prvé
+
+        # Aplikuj slice
+        paginated = messages[offset:offset+limit]
+
+        # Otoč späť do prirodzeného poradia (od najstaršej po najnovšiu)
+        serializer = MessageSerializer(paginated[::-1], many=True)
         return Response(serializer.data)
 
     elif request.method == 'POST':
@@ -620,7 +632,7 @@ def chat_messages_view(request, user_id):
         if serializer.is_valid():
             message = serializer.save()
 
-            # 🔔 Získaj všetky push tokeny pre príjemcu
+            # 🔔 Pošli push notifikácie všetkým tokenom príjemcu
             tokens = ExpoPushToken.objects.filter(user=message.recipient).values_list("token", flat=True)
             full_name = f"{current_user.first_name} {current_user.last_name}".strip()
             preview = message.text[:80] + ("..." if len(message.text) > 80 else "")
