@@ -663,10 +663,9 @@ def chat_users_list(request):
     sorted_users = sorted(
         filtered_users,
         key=lambda x: (
-            not x["has_unread"],
+            -int(x["has_unread"]),  # True (1) → -1 → vyššie, False (0) → 0 → nižšie
             x["last_message_timestamp"] or ""
-        ),
-        reverse=True
+        )
     )
 
     return Response(sorted_users)
