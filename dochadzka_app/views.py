@@ -706,25 +706,29 @@ def chat_users_list(request):
 
 
 @api_view(['POST'])
-
 @permission_classes([IsAuthenticated])
 def add_reaction(request, message_id):
-    """
-    Pridá alebo aktualizuje reakciu používateľa na správu.
-    """
     message = get_object_or_404(Message, id=message_id)
     emoji = request.data.get('emoji')
+    user = request.user
 
     if not emoji:
         return Response({"error": "Emoji is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Jeden používateľ môže mať len jednu reakciu na jednu správu
-    reaction, created = MessageReaction.objects.update_or_create(
-        message=message,
-        user=request.user,
-        defaults={"emoji": emoji}
-    )
+    # Skontroluj, či už existuje reakcia
+    existing_reaction = MessageReaction.objects.filter(message=message, user=user).first()
 
-    serializer = MessageReactionSerializer(reaction)
-    return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-
+    if existing_reaction:
+        if existing_reaction.emoji == emoji:
+            # rovnaká emoji → vymaž (toggle off)
+            existing_reaction.delete()
+            return Response({"deleted": True})
+        else:
+            # iná emoji → aktualizuj
+            existing_reaction.emoji = emoji
+            existing_reaction.save()
+            return Response(MessageReactionSerializer(existing_reaction).data)
+    else:
+        # nová reakcia
+        reaction = MessageReaction.objects.create(message=message, user=user, emoji=emoji)
+        return Response(MessageReactionSerializer(reaction).data, status=status.HTTP_201_CREATED)
