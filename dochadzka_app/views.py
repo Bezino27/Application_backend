@@ -640,7 +640,7 @@ def chat_users_list(request):
     filtered_users = []
     for u in users:
         roles = UserCategoryRole.objects.filter(user=u).values_list("role", flat=True)
-        if any(r.lower() in ['tréner', 'admin'] for r in roles):
+        if any(r.lower() in ['coach', 'admin'] for r in roles):
             filtered_users.append({
                 "id": u.id,
                 "username": u.username,
