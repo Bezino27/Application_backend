@@ -143,3 +143,16 @@ class Message(models.Model):
 
     def __str__(self):
         return f"From {self.sender} to {self.recipient}: {self.text[:20]}"
+
+
+
+
+
+class MessageReaction(models.Model):
+    message = models.ForeignKey("Message", on_delete=models.CASCADE, related_name="reactions")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    emoji = models.CharField(max_length=10)  # napr. "👍", "❤️"
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('message', 'user')  # 1 reakcia na 1 správu od jedného usera

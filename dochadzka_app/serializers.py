@@ -127,17 +127,24 @@ class CategorySerializer2(serializers.ModelSerializer):
 
 
 from rest_framework import serializers
-from .models import Message
+from .models import Message, MessageReaction
 from django.contrib.auth import get_user_model
 User = get_user_model()
+
+class MessageReactionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MessageReaction
+        fields = ['id', 'user', 'emoji', 'created_at']
+
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.CharField(source='sender.username', read_only=True)
     recipient_name = serializers.CharField(source='recipient.username', read_only=True)
+    reactions = MessageReactionSerializer(many=True, read_only=True)
 
     class Meta:
         model = Message
-        fields = ['id', 'sender', 'recipient', 'text', 'timestamp', 'read', 'sender_name', 'recipient_name']
+        fields = ['id', 'sender', 'recipient', 'text', 'timestamp', 'read', 'sender_name', 'recipient_name', 'reactions']
 
 
 
@@ -155,4 +162,5 @@ class SimpleUserSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
         return f"{obj.first_name} {obj.last_name}"
+
 

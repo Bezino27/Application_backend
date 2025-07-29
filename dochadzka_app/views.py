@@ -591,8 +591,8 @@ def list_clubs(request):
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from .models import Message
-from .serializers import MessageSerializer
+from .models import Message, MessageReaction
+from .serializers import MessageSerializer, MessageReactionSerializer
 
 
 from .models import ExpoPushToken  # 👈 ak máš tento model
@@ -655,7 +655,6 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
-from .serializers import SimpleUserSerializer  # ↓ pripravíme
 
 User = get_user_model()
 
@@ -703,3 +702,28 @@ def chat_users_list(request):
     )
 
     return Response(sorted_users)
+
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_reaction(request, message_id):
+    """
+    Pridá alebo aktualizuje reakciu používateľa na správu.
+    """
+    message = get_object_or_404(Message, id=message_id)
+    emoji = request.data.get('emoji')
+
+    if not emoji:
+        return Response({"error": "Emoji is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Jeden používateľ môže mať len jednu reakciu na jednu správu
+    reaction, created = MessageReaction.objects.update_or_create(
+        message=message,
+        user=request.user,
+        defaults={"emoji": emoji}
+    )
+
+    serializer = MessageReactionSerializer(reaction)
+    return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+

@@ -2,7 +2,7 @@ from django.urls import path
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (me_view, login_view, save_expo_push_token, register_user, chat_users_list, coach_players_attendance_view,
-                    get_categories, player_trainings_view, delete_training_view, training_attendance_view,
+                    get_categories, player_trainings_view, add_reaction, delete_training_view, training_attendance_view,
                     set_training_attendance, list_clubs, test_push, create_training_view, user_categories_view,
                     training_detail_view, coach_trainings_view, change_password_view, chat_messages_view)
 
@@ -30,5 +30,7 @@ urlpatterns = [
     path('clubs/', list_clubs),
     path('chat/<int:user_id>/', chat_messages_view, name='chat-messages'),
     path("chat-users/", chat_users_list),
+    path("chat/<int:message_id>/react/", add_reaction, name="add-reaction"),
+
 
 ]
