@@ -596,13 +596,14 @@ from django.db.models import Q
 from .models import Message
 from .serializers import MessageSerializer
 
+import requests
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def chat_messages_view(request, user_id):
     current_user = request.user
 
     if request.method == 'GET':
-        # ✅ Označíme všetky prijaté správy ako prečítané
         Message.objects.filter(sender_id=user_id, recipient=current_user, read=False).update(read=True)
 
         messages = Message.objects.filter(
@@ -615,11 +616,30 @@ def chat_messages_view(request, user_id):
 
     elif request.method == 'POST':
         data = request.data.copy()
-        data['sender'] = current_user.id  # zabezpečíme správneho odosielateľa
+        data['sender'] = current_user.id
         serializer = MessageSerializer(data=data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            message = serializer.save()
+
+            # 🔔 PUSH NOTIFIKÁCIA
+            recipient = message.recipient
+            if hasattr(recipient, "expo_push_token") and recipient.expo_push_token:
+                try:
+                    requests.post("https://exp.host/--/api/v2/push/send", json={
+                        "to": recipient.expo_push_token,
+                        "title": f"Nová správa od {current_user.first_name}",
+                        "body": message.text[:80] + ("..." if len(message.text) > 80 else ""),
+                        "sound": "default",
+                        "data": {
+                            "type": "chat",
+                            "sender_id": current_user.id,
+                            "sender_name": f"{current_user.first_name} {current_user.last_name}",
+                        }
+                    })
+                except Exception as e:
+                    print("❌ Chyba pri odosielaní push notifikácie:", e)
+
+            return Response(MessageSerializer(message).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 from rest_framework.decorators import api_view, permission_classes
