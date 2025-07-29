@@ -632,6 +632,7 @@ User = get_user_model()
 
 from django.db.models import Q
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def chat_users_list(request):
@@ -668,10 +669,8 @@ def chat_users_list(request):
 
     sorted_users = sorted(
         filtered_users,
-        key=lambda x: (
-            -int(x["has_unread"]),
-            x["last_message_timestamp"] or ""
-        )
+        key=lambda x: x["last_message_timestamp"] or "",
+        reverse=True
     )
 
     return Response(sorted_users)
