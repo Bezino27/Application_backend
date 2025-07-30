@@ -733,3 +733,64 @@ def add_reaction(request, message_id):
         # nová reakcia
         reaction = MessageReaction.objects.create(message=message, user=user, emoji=emoji)
         return Response(MessageReactionSerializer(reaction).data, status=status.HTTP_201_CREATED)
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import User, UserCategoryRole
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def users_in_club(request):
+    club = request.user.club
+    if not club:
+        return Response([], status=400)
+
+    users = User.objects.filter(club=club).order_by('-date_joined')
+    data = []
+    for u in users:
+        roles = UserCategoryRole.objects.filter(user=u).values('role', 'category__id', 'category__name')
+        data.append({
+            "id": u.id,
+            "username": u.username,
+            "name": u.get_full_name(),
+            "email": u.email,
+            "date_joined": u.date_joined,
+            "roles": list(roles)
+        })
+    return Response(data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def assign_role(request):
+    user_id = request.data.get("user_id")
+    category_id = request.data.get("category_id")
+    role = request.data.get("role")
+
+    if not user_id or not category_id or not role:
+        return Response({"error": "Missing fields"}, status=400)
+
+    UserCategoryRole.objects.get_or_create(
+        user_id=user_id,
+        category_id=category_id,
+        role=role
+    )
+    return Response({"success": True})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def remove_role(request):
+    user_id = request.data.get("user_id")
+    category_id = request.data.get("category_id")
+    role = request.data.get("role")
+
+    try:
+        obj = UserCategoryRole.objects.get(user_id=user_id, category_id=category_id, role=role)
+        obj.delete()
+        return Response({"success": True})
+    except UserCategoryRole.DoesNotExist:
+        return Response({"error": "Not found"}, status=404)
+

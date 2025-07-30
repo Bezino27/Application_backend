@@ -24,15 +24,20 @@ class UserCategoryRoleSerializer(serializers.ModelSerializer):
         fields = ['category', 'role','role_display']
 
 
+from datetime import timedelta
+from django.utils.timezone import now
+
 class UserMeSerializer(serializers.ModelSerializer):
     club = ClubSerializer()
     roles = serializers.SerializerMethodField()
     categories = serializers.SerializerMethodField()
+    is_new = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'club', 'roles', 'categories','email_2',
-                  'birth_date', 'number','height', 'weight', 'side']
+        fields = ['id', 'username', 'first_name', 'last_name', 'email', 'club',
+                  'roles', 'categories', 'email_2', 'birth_date', 'number',
+                  'height', 'weight', 'side', 'is_new']
 
     def get_roles(self, obj):
         roles = UserCategoryRole.objects.filter(user=obj)
@@ -46,6 +51,8 @@ class UserMeSerializer(serializers.ModelSerializer):
             .distinct()
         )
 
+    def get_is_new(self, obj):
+        return obj.date_joined >= now() - timedelta(days=2)
 class UserMeUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
