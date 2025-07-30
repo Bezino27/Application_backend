@@ -811,3 +811,47 @@ def categories_in_club(request):
     categories = Category.objects.filter(club=club).order_by("name")
     data = [{"id": c.id, "name": c.name} for c in categories]
     return Response(data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def coach_players_view(request):
+    user = request.user
+    coach_roles = UserCategoryRole.objects.filter(user=user, role='coach')
+    category_ids = coach_roles.values_list('category_id', flat=True)
+
+    users = User.objects.filter(
+        roles__category_id__in=category_ids,
+        roles__role='player'
+    ).distinct().order_by('last_name')
+
+    result = []
+    for u in users:
+        user_roles = UserCategoryRole.objects.filter(user=u, role='player', category_id__in=category_ids)
+        result.append({
+            'id': u.id,
+            'name': u.get_full_name(),
+            'birth_date': u.birth_date,
+            'categories': list(user_roles.values('category__id', 'category__name')),
+        })
+
+    return Response(result)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def all_players_with_roles(request):
+    user = request.user
+    coach_roles = UserCategoryRole.objects.filter(user=user, role='coach')
+    category_ids = coach_roles.values_list('category_id', flat=True)
+
+    users = User.objects.exclude(id=user.id).order_by('-date_joined')
+
+    result = []
+    for u in users:
+        player_roles = UserCategoryRole.objects.filter(user=u, role='player')
+        result.append({
+            'id': u.id,
+            'name': u.get_full_name(),
+            'birth_date': u.birth_date,
+            'categories': list(player_roles.values('category__id', 'category__name')),
+        })
+    return Response(result)
