@@ -796,3 +796,18 @@ def remove_role(request):
     except UserCategoryRole.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import Category
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def categories_in_club(request):
+    club = request.user.club
+    if not club:
+        return Response({"error": "Používateľ nemá priradený klub."}, status=400)
+
+    categories = Category.objects.filter(club=club).order_by("name")
+    data = [{"id": c.id, "name": c.name} for c in categories]
+    return Response(data)

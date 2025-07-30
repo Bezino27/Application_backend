@@ -5,7 +5,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     get_categories, player_trainings_view, add_reaction, delete_training_view, training_attendance_view,
                     set_training_attendance, list_clubs, test_push, create_training_view, user_categories_view,
                     training_detail_view, coach_trainings_view, change_password_view, chat_messages_view,
-                    users_in_club,assign_role,remove_role)
+                    users_in_club,assign_role,remove_role,categories_in_club)
 
 app_name = 'dochadzka_app'
 
@@ -35,6 +35,6 @@ urlpatterns = [
     path('users-in-club/', users_in_club),
     path('assign-role/', assign_role),
     path('remove-role/', remove_role),
-
+    path('categories-in-club/', categories_in_club),
 
 ]
