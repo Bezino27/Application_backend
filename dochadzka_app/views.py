@@ -765,9 +765,12 @@ def users_in_club(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def assign_role(request):
-    user_id = request.data.get("user_id")
-    category_id = request.data.get("category_id")
-    role = request.data.get("role")
+    try:
+        user_id = int(request.data.get("user_id"))
+        category_id = int(request.data.get("category_id"))
+        role = str(request.data.get("role")).strip()
+    except (TypeError, ValueError):
+        return Response({"error": "Neplatné dáta – user_id a category_id musia byť čísla."}, status=400)
 
     if not user_id or not category_id or not role:
         return Response({"error": "Missing fields"}, status=400)
@@ -778,7 +781,6 @@ def assign_role(request):
         role=role
     )
     return Response({"success": True})
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
