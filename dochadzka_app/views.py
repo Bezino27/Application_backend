@@ -779,12 +779,30 @@ def assign_role(request):
     if not user_id or not category_id or not role:
         return Response({"error": "Missing fields"}, status=400)
 
-    UserCategoryRole.objects.get_or_create(
+    obj, created = UserCategoryRole.objects.get_or_create(
         user_id=user_id,
         category_id=category_id,
         role=role
     )
+
+    if created:
+        User = get_user_model()
+        user = User.objects.get(id=user_id)
+        category = Category.objects.get(id=category_id)
+
+        tokens = ExpoPushToken.objects.filter(user=user).values_list("token", flat=True)
+        for token in tokens:
+            try:
+                send_push_notification(
+                    token,
+                    title="Nová rola priradená",
+                    message=f"Bola ti priradená rola '{role}' v kategórii '{category.name}'."
+                )
+            except Exception as e:
+                print(f"❌ Chyba pri notifikácii {user.username}: {e}")
+
     return Response({"success": True})
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
