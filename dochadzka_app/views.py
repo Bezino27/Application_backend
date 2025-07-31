@@ -641,7 +641,9 @@ def chat_messages_view(request, user_id):
                     response = send_push_notification(
                         token,
                         title=f"Nová správa od {full_name}",
-                        message=preview
+                        message=preview,
+                        user_id=current_user.id,  # ← ten kto posiela správu
+                        user_name=full_name  # ← celé meno
                     )
                     logger.info(f"📤 {message.recipient.username} → {token} → {response.status_code} - {response.text}")
                 except Exception as e:
