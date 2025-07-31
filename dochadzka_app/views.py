@@ -156,7 +156,9 @@ def create_training_view(request):
                         response = send_push_notification(
                             token,
                             "Nový tréning",
-                            f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}"
+                            f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}",
+                            user_id=0,  # alebo napr. -1 – len placeholder, nebude sa používať
+                            user_name="tréning"  # tiež len placeholder
                         )
                         logger.info(f"📤 {player.username} → {token} → {response.status_code} - {response.text}")
                     except Exception as e:
