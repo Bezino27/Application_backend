@@ -6,7 +6,7 @@ def send_push_notification(token: str, title: str, message: str, user_id: int = 
         "to": token,
         "title": title,
         "body": message,
-        "sound": "zvuk.caf",
+        "sound": "sound_post.caf",
         "data": {}
     }
 
