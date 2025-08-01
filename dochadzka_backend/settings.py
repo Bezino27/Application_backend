@@ -161,10 +161,10 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'dochadzka',
-            'USER': 'kurri',  # zvyčajne rovnaké ako tvoje macOS používateľské meno
-            'PASSWORD': '',  # ak si nenastavil heslo, nechaj prázdne
-            'HOST': 'localhost',
+            'NAME': os.getenv('DB_NAME', 'dochadzka'),
+            'USER': os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD', 'MojeSuperTajneHeslo123'),
+            'HOST': os.getenv('DB_HOST', 'db'),
             'PORT': '5432',
         }
     }
