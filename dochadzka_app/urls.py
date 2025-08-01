@@ -40,5 +40,6 @@ urlpatterns = [
     path('categories-in-club/', categories_in_club),
     path('categories-in-club/', coach_players_view),
     path('categories-in-club/', all_players_with_roles),
+    path('categories-in-clubaaa/', all_players_with_roles),
 
 ]
