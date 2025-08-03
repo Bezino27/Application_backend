@@ -848,3 +848,19 @@ def all_players_with_roles(request):
             'categories': list(player_roles.values('category__id', 'category__name')),
         })
     return Response(result)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def player_trainings_all_view(request):
+    user = request.user
+    club = user.club
+
+    # Získaj všetky tréningy v klube, kde bol používateľ evidovaný
+    trainings = Training.objects.filter(
+        club=club,
+        attendances__user=user
+    ).select_related('category').prefetch_related('attendances').distinct().order_by('date')
+
+    serializer = TrainingSerializer(trainings, many=True, context={'request': request})
+    return Response(serializer.data)
