@@ -108,6 +108,7 @@ from .models import Role, ExpoPushToken
 from .serializers import TrainingCreateSerializer
 from .helpers import send_push_notification  # tvoje posielanie
 import logging
+from tasks import send_training_notifications
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -149,21 +150,7 @@ def create_training_view(request):
 
             logger.info(f"➡️ Posielam notifikácie hráčom ({players.count()})")
 
-            for player in players:
-                tokens = ExpoPushToken.objects.filter(user=player).values_list("token", flat=True)
-                for token in tokens:
-                    try:
-                        response = send_push_notification(
-                            token,
-                            "Nový tréning",
-                            f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}",
-                            user_id=0,  # alebo napr. -1 – len placeholder, nebude sa používať
-                            user_name="tréning"  # tiež len placeholder
-                        )
-                        logger.info(f"📤 {player.username} → {token} → {response.status_code} - {response.text}")
-                    except Exception as e:
-                        logger.warning(f"❌ Chyba pri push {player.username} → {token}: {str(e)}")
-
+            send_training_notifications.delay(training.id)
             created_trainings.append(training.id)
         else:
             logger.warning(f"❌ Nevalidné dáta pre kategóriu {cat_id}: {serializer.errors}")
