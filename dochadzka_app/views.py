@@ -775,6 +775,8 @@ def assign_role(request):
     return Response({"success": True})
 
 
+from django.utils import timezone
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def remove_role(request):
@@ -783,8 +785,9 @@ def remove_role(request):
     role = request.data.get("role")
 
     try:
-        obj = UserCategoryRole.objects.get(user_id=user_id, category_id=category_id, role=role)
-        obj.delete()
+        obj = UserCategoryRole.objects.get(user_id=user_id, category_id=category_id, role=role, removed_at__isnull=True)
+        obj.removed_at = timezone.now()
+        obj.save()
         return Response({"success": True})
     except UserCategoryRole.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
