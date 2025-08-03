@@ -184,16 +184,11 @@ from dochadzka_app.serializers import TrainingSerializer
 @permission_classes([IsAuthenticated])
 def player_trainings_view(request):
     user = request.user
-    club = user.club
 
-    # Získaj kategórie, kde je hráč
-    categories = Category.objects.filter(club=club, user_roles__user=user).distinct()
-
-    # Tréningy + optimalizované načítanie FK a M2M
+    # Získaj tréningy, kde sa hráč zúčastnil (alebo má dochádzku)
     trainings = Training.objects.filter(
-        category__in=categories,
-        club=club
-    ).select_related('category').prefetch_related('attendances').order_by('date')
+        attendances__user=user
+    ).select_related('category').prefetch_related('attendances').distinct().order_by('date')
 
     serializer = TrainingSerializer(trainings, many=True, context={'request': request})
     return Response(serializer.data)
