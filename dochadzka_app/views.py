@@ -775,8 +775,6 @@ def assign_role(request):
     return Response({"success": True})
 
 
-from django.utils import timezone
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def remove_role(request):
@@ -785,9 +783,8 @@ def remove_role(request):
     role = request.data.get("role")
 
     try:
-        obj = UserCategoryRole.objects.get(user_id=user_id, category_id=category_id, role=role, removed_at__isnull=True)
-        obj.removed_at = timezone.now()
-        obj.save()
+        obj = UserCategoryRole.objects.get(user_id=user_id, category_id=category_id, role=role)
+        obj.delete()
         return Response({"success": True})
     except UserCategoryRole.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
@@ -853,31 +850,42 @@ def all_players_with_roles(request):
     return Response(result)
 
 
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from dochadzka_app.models import Training, TrainingAttendance, UserCategoryRole
+from dochadzka_app.serializers import TrainingSerializer
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def player_trainings_history_view(request):
     user = request.user
     club = user.club
 
-    # Získaj všetky roly typu 'player'
+    # 1. Tréningy počas trvania roly
     player_roles = UserCategoryRole.objects.filter(user=user, role='player')
-
-    # Kategórie a rozsahy platnosti
     trainings = Training.objects.none()
 
     for role in player_roles:
         start = role.assigned_at
         end = role.removed_at or timezone.now()
 
-        # Tréningy v tejto kategórii, ktoré sa udiali počas trvania roly
-        t_qs = Training.objects.filter(
+        role_trainings = Training.objects.filter(
             club=club,
             category=role.category,
             date__range=(start, end)
         )
-        trainings = trainings | t_qs
+        trainings |= role_trainings
 
-    trainings = trainings.select_related('category').prefetch_related('attendances').order_by('date').distinct()
+    # 2. Tréningy, kde má hráč dochádzku (aj mimo trvania roly)
+    attended_trainings = Training.objects.filter(
+        club=club,
+        attendances__user=user
+    )
 
-    serializer = TrainingSerializer(trainings, many=True, context={'request': request})
+    # 3. Spoj oba querysety a odstráň duplikáty
+    all_trainings = (trainings | attended_trainings).select_related('category').prefetch_related('attendances').order_by('date').distinct()
+
+    serializer = TrainingSerializer(all_trainings, many=True, context={'request': request})
     return Response(serializer.data)
