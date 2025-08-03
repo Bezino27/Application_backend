@@ -145,6 +145,7 @@ from dotenv import load_dotenv
 import os
 import dj_database_url
 
+
 # Načítanie .env súboru
 load_dotenv()
 
@@ -169,6 +170,13 @@ else:
     }
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
+
+
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
 
 AUTH_PASSWORD_VALIDATORS = [
     {

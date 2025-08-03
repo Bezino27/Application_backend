@@ -24,3 +24,5 @@ def send_push_notification(token: str, title: str, message: str, user_id: int = 
         return response
     except Exception as e:
         print("❌ Expo push chyba:", e)
+
+
