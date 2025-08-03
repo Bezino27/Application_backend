@@ -81,6 +81,8 @@ class UserCategoryRole(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='roles')  # oprava
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='user_roles')
     role = models.CharField(max_length=10, choices=Role.choices)
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    removed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ('user', 'category', 'role')

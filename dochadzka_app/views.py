@@ -856,18 +856,25 @@ def player_trainings_history_view(request):
     user = request.user
     club = user.club
 
-    # Všetky kategórie, kde NIEKEDY mal hráč rolu 'player'
-    categories = Category.objects.filter(
-        club=club,
-        user_roles__user=user,
-        user_roles__role='player'
-    ).distinct()
+    # Získaj všetky roly typu 'player'
+    player_roles = UserCategoryRole.objects.filter(user=user, role='player')
 
-    # Tréningy z týchto kategórií
-    trainings = Training.objects.filter(
-        category__in=categories,
-        club=club
-    ).select_related('category').prefetch_related('attendances').order_by('date')
+    # Kategórie a rozsahy platnosti
+    trainings = Training.objects.none()
+
+    for role in player_roles:
+        start = role.assigned_at
+        end = role.removed_at or timezone.now()
+
+        # Tréningy v tejto kategórii, ktoré sa udiali počas trvania roly
+        t_qs = Training.objects.filter(
+            club=club,
+            category=role.category,
+            date__range=(start, end)
+        )
+        trainings = trainings | t_qs
+
+    trainings = trainings.select_related('category').prefetch_related('attendances').order_by('date').distinct()
 
     serializer = TrainingSerializer(trainings, many=True, context={'request': request})
     return Response(serializer.data)
