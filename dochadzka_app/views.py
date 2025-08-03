@@ -108,8 +108,7 @@ from .models import Role, ExpoPushToken
 from .serializers import TrainingCreateSerializer
 from .helpers import send_push_notification  # tvoje posielanie
 import logging
-from tasks import send_training_notifications
-
+from dochadzka_app.tasks import send_training_notifications
 logger = logging.getLogger(__name__)
 User = get_user_model()
 
