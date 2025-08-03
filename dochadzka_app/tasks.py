@@ -1,9 +1,9 @@
 # tasks.py
 from celery import shared_task
 from .models import Training
-from models import User, Role
-from helpers import send_push_notification  # uprav podľa tvojej štruktúry
-from models import ExpoPushToken  # uprav podľa tvojej štruktúry
+from .models import User, Role
+from .helpers import send_push_notification  # uprav podľa tvojej štruktúry
+from .models import ExpoPushToken  # uprav podľa tvojej štruktúry
 import logging
 
 logger = logging.getLogger(__name__)
