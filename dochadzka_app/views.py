@@ -327,6 +327,8 @@ def test_push(request):
     return Response({"success": True})
 
 
+from dochadzka_app.tasks import notify_training_deleted
+
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_training_view(request, training_id):
@@ -337,27 +339,10 @@ def delete_training_view(request, training_id):
     if not is_coach:
         return Response({"error": "Nemáš oprávnenie na zmazanie tohto tréningu."}, status=403)
 
-    # Notifikuj hráčov o zmazaní
-    players = User.objects.filter(
-        roles__category=training.category,
-        roles__role=Role.PLAYER
-    ).distinct()
-
     logger.info(f"🗑️ Mazanie tréningu {training.id} – {training.description}")
-    logger.info(f"➡️ Posielam notifikácie o zmazaní hráčom ({players.count()})")
 
-    for player in players:
-        tokens = ExpoPushToken.objects.filter(user=player).values_list("token", flat=True)
-        for token in tokens:
-            try:
-                response = send_push_notification(
-                    token,
-                    "Zrušený tréning",
-                    f"Tréning '{training.description}' bol zrušený."
-                )
-                logger.info(f"📤 {player.username} → {token} → {response.status_code} - {response.text}")
-            except Exception as e:
-                logger.warning(f"❌ Chyba pri push {player.username} → {token}: {str(e)}")
+    # Spusti Celery task na notifikáciu hráčov
+    notify_training_deleted.delay(training.id, training.description, training.category.id)
 
     training.delete()
     logger.info(f"✅ Tréning {training.id} úspešne zmazaný.")
