@@ -856,46 +856,18 @@ def player_trainings_history_view(request):
     user = request.user
     club = user.club
 
-    # Všetky kategórie, kde mal hráč niekedy rolu
+    # Všetky kategórie, kde NIEKEDY mal hráč rolu 'player'
     categories = Category.objects.filter(
+        club=club,
         user_roles__user=user,
         user_roles__role='player'
     ).distinct()
 
-    response_data = {}
+    # Tréningy z týchto kategórií
+    trainings = Training.objects.filter(
+        category__in=categories,
+        club=club
+    ).select_related('category').prefetch_related('attendances').order_by('date')
 
-    for cat in categories:
-        trainings = Training.objects.filter(category=cat, club=club).order_by('-date')
-        attendances = TrainingAttendance.objects.filter(user=user, training__in=trainings)
-        attendance_map = {a.training_id: a.status for a in attendances}
-
-        total = trainings.count()
-        present = sum(1 for t in trainings if attendance_map.get(t.id) == 'present')
-        absent = sum(1 for t in trainings if attendance_map.get(t.id) == 'absent')
-        unknown = total - (present + absent)
-
-        percent = round((present / total) * 100) if total > 0 else 0
-
-        serialized_trainings = []
-        for t in trainings:
-            status = attendance_map.get(t.id, 'unknown')
-            serialized_trainings.append({
-                'id': t.id,
-                'description': t.description,
-                'date': t.date.isoformat(),
-                'location': t.location,
-                'category': cat.id,
-                'category_name': cat.name,
-                'status': status,
-            })
-
-        response_data[cat.name] = {
-            'total': total,
-            'present': present,
-            'absent': absent,
-            'unknown': unknown,
-            'percentage': percent,
-            'trainings': serialized_trainings,
-        }
-
-    return Response(response_data)
+    serializer = TrainingSerializer(trainings, many=True, context={'request': request})
+    return Response(serializer.data)
