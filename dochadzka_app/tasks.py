@@ -27,8 +27,8 @@ def send_training_notifications(training_id):
             try:
                 send_push_notification(
                     token,
-                    "Nový tréning",
-                    f"{training.description} - {training.date.strftime('%d.%m.%Y %H:%M')} v {training.location}",
+                    "Nový Tréning",
+                    f"{training.description} - {training.date.strftime('%d.%m.%Y')} v {training.location}",
                     user_id=0,
                     user_name="tréning"
                 )
