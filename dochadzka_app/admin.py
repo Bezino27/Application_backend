@@ -56,8 +56,8 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Club)
 class ClubAdmin(admin.ModelAdmin):
-    list_display = ('name',)
-    search_fields = ('name',)
+    list_display = ('name', 'address', 'phone', 'email', 'contact_person', 'iban')
+    search_fields = ('name', 'address', 'phone', 'email', 'contact_person', 'iban')
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):

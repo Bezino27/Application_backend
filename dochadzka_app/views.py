@@ -559,11 +559,23 @@ def register_user(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
-def list_clubs(request):
-    clubs = Club.objects.all()
-    data = [{"id": club.id, "name": club.name} for club in clubs]
-    return Response(data)
+def club_detail(request, club_id):
+    try:
+        club = Club.objects.get(id=club_id)
+    except Club.DoesNotExist:
+        return Response({"error": "Club not found"}, status=404)
 
+    data = {
+        "id": club.id,
+        "name": club.name,
+        "description": club.description,
+        "address": club.address,
+        "phone": club.phone,
+        "email": club.email,
+        "contact_person": club.contact_person,
+        "iban": club.iban,
+    }
+    return Response(data)
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
