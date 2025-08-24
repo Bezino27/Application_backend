@@ -1388,10 +1388,6 @@ def training_update_view(request, training_id):
     except Training.DoesNotExist:
         return Response({'error': 'Tréning neexistuje'}, status=status.HTTP_404_NOT_FOUND)
 
-    # ✅ Povoliť len trénerom vlastných kategórií
-    if request.user not in training.category.coaches.all():
-        return Response({'error': 'Nemáš oprávnenie upravovať tento tréning'}, status=status.HTTP_403_FORBIDDEN)
-
     if request.method == 'GET':
         serializer = TrainingUpdateSerializer(training)
         return Response(serializer.data)
