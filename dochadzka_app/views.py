@@ -735,7 +735,8 @@ def users_in_club(request):
             "email": u.email,
             "date_joined": u.date_joined,
             "birth_date": u.birth_date,
-            "roles": list(roles)
+            "roles": list(roles),
+            "position": u.position,
         })
     return Response(data)
 
