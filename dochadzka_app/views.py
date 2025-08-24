@@ -736,7 +736,7 @@ def users_in_club(request):
             "date_joined": u.date_joined,
             "birth_date": u.birth_date,
             "roles": list(roles),
-            "position": u.position,
+            'position': u.position.name if u.position else None,
         })
     return Response(data)
 
