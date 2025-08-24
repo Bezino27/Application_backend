@@ -2,14 +2,16 @@ from django.urls import path
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (me_view, login_view, save_expo_push_token, register_user, chat_users_list,
-                    coach_players_attendance_view,coach_matches_view,
+                    coach_players_attendance_view, coach_matches_view,
                     get_categories, player_trainings_view, add_reaction, delete_training_view, training_attendance_view,
                     set_training_attendance, list_clubs, test_push, create_training_view, user_categories_view,
                     training_detail_view, coach_trainings_view, change_password_view, chat_messages_view,
-                    users_in_club, assign_role, remove_role, categories_in_club, coach_players_view, training_update_view,
+                    users_in_club, assign_role, remove_role, categories_in_club, coach_players_view,
+                    training_update_view,
                     all_players_with_roles, player_trainings_history_view, positions_list, player_matches_view,
                     create_match_participation, create_match_view, jersey_numbers_view, club_documents_view,
-                    upload_document, match_delete_view, assign_players_to_category, match_stats_view, match_detail_view,match_nominations_view, player_nominated_matches_view, match_participation_view)
+                    upload_document, match_delete_view, assign_players_to_category, match_stats_view, match_detail_view,
+                    match_nominations_view, player_nominated_matches_view, match_participation_view, set_preferred_role)
 
 app_name = 'dochadzka_app'
 
@@ -60,5 +62,6 @@ urlpatterns = [
     path('matches/delete/<int:match_id>/', match_delete_view, name='match-delete'),
     path("trainings/<int:training_id>/", training_update_view, name="training-update"),
     path("assign-players-to-category/", assign_players_to_category, name="assign_players_to_category"),
+    path("set-preferd-role/", set_preferred_role, name="set_preferred_role"),
 
 ]

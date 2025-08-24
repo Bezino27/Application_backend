@@ -59,6 +59,7 @@ def me_view(request):
         'weight': user.weight,
         'side': user.side,
         'position': user.position.name if user.position else None,
+        'preferred_role': user.preferred_role,
     }
 
     return Response(data)
@@ -1454,4 +1455,16 @@ def assign_players_to_category(request):
         user_id__in=to_remove
     ).delete()
 
+    return Response({"success": True})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def set_preferred_role(request):
+    role = request.data.get("preferred_role")
+    if role not in ['player', 'coach', 'admin']:
+        return Response({"error": "Invalid role"}, status=400)
+
+    request.user.preferred_role = role
+    request.user.save()
     return Response({"success": True})

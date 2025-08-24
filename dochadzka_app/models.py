@@ -10,6 +10,11 @@ class Club(models.Model):
     def __str__(self):
         return self.name
 
+class Role(models.TextChoices):
+    PLAYER = 'player', 'Hráč'
+    COACH = 'coach', 'Tréner'
+    PARENT = 'parent', 'Rodič'
+    ADMIN = 'admin', 'Admin'
 
 class User(AbstractUser):
     # Môžeš sem pridať ďalšie polia, ak chceš (napr. telefón, avatar...)
@@ -23,7 +28,7 @@ class User(AbstractUser):
     side = models.CharField(max_length=10, blank=True)    # napr. "ľavá", "pravá"
     email_2 = models.EmailField(null=True, blank=True)    # druhý email
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True, blank=True)
-
+    preferred_role = models.CharField(max_length=20, null=True, blank=True, choices=Role.choices)
     def __str__(self):
         return self.username
 
@@ -44,11 +49,6 @@ class Category(models.Model):
         return f"{self.name} ({self.club.name})"
 
 
-class Role(models.TextChoices):
-    PLAYER = 'player', 'Hráč'
-    COACH = 'coach', 'Tréner'
-    PARENT = 'parent', 'Rodič'
-    ADMIN = 'admin', 'Admin'
 
 
 
