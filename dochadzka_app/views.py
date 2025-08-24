@@ -1405,3 +1405,53 @@ def training_update_view(request, training_id):
 
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.db import transaction
+from .models import User, Category, UserCategoryRole
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def assign_players_to_category(request):
+    category_id = request.data.get("category_id")
+    player_ids = request.data.get("player_ids", [])
+
+    if not category_id:
+        return Response({"error": "category_id je povinný"}, status=400)
+
+    try:
+        category = Category.objects.get(id=category_id)
+    except Category.DoesNotExist:
+        return Response({"error": "Kategória neexistuje"}, status=404)
+
+    # Získaj všetky existujúce role pre túto kategóriu
+    existing_roles = UserCategoryRole.objects.filter(
+        category=category,
+        role="player"
+    )
+
+    existing_user_ids = set(existing_roles.values_list("user_id", flat=True))
+    new_user_ids = set(player_ids)
+
+    # Pridaj nových hráčov
+    to_add = new_user_ids - existing_user_ids
+    for user_id in to_add:
+        UserCategoryRole.objects.create(
+            user_id=user_id,
+            category=category,
+            role="player"
+        )
+
+    # Odstráň hráčov, ktorí už nemajú byť v kategórii
+    to_remove = existing_user_ids - new_user_ids
+    UserCategoryRole.objects.filter(
+        category=category,
+        role="player",
+        user_id__in=to_remove
+    ).delete()
+
+    return Response({"success": True})

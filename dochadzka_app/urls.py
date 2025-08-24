@@ -9,7 +9,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     users_in_club, assign_role, remove_role, categories_in_club, coach_players_view, training_update_view,
                     all_players_with_roles, player_trainings_history_view, positions_list, player_matches_view,
                     create_match_participation, create_match_view, jersey_numbers_view, club_documents_view,
-                    upload_document, match_delete_view, match_stats_view, match_detail_view,match_nominations_view, player_nominated_matches_view, match_participation_view)
+                    upload_document, match_delete_view, assign_players_to_category, match_stats_view, match_detail_view,match_nominations_view, player_nominated_matches_view, match_participation_view)
 
 app_name = 'dochadzka_app'
 
@@ -59,5 +59,6 @@ urlpatterns = [
     path("match-stats/<int:match_id>/", match_stats_view, name="match-stats"),
     path('matches/delete/<int:match_id>/', match_delete_view, name='match-delete'),
     path("trainings/<int:training_id>/", training_update_view, name="training-update"),
+    path("assign-players-to-category/", assign_players_to_category, name="assign_players_to_category"),
 
 ]
