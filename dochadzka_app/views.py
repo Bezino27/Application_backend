@@ -1379,6 +1379,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Training
 from .serializers import TrainingUpdateSerializer
+from dochadzka_app.tasks import send_training_updated_notification
 
 
 @api_view(['GET', 'PUT'])
@@ -1399,7 +1400,7 @@ def training_update_view(request, training_id):
             serializer.save()
 
             # ✅ Spusti Celery task na poslanie notifikácie
-            send_training_notifications.delay(training.id)
+            send_training_updated_notification.delay(training.id)
 
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
