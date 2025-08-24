@@ -62,6 +62,6 @@ urlpatterns = [
     path('matches/delete/<int:match_id>/', match_delete_view, name='match-delete'),
     path("trainings/<int:training_id>/", training_update_view, name="training-update"),
     path("assign-players-to-category/", assign_players_to_category, name="assign_players_to_category"),
-    path("set-preferd-role/", set_preferred_role, name="set_preferred_role"),
+    path("set-preferrd-role/", set_preferred_role, name="set_preferred_role"),
 
 ]
