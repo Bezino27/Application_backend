@@ -58,6 +58,6 @@ urlpatterns = [
     path("match-participation/", match_participation_view),
     path("match-stats/<int:match_id>/", match_stats_view, name="match-stats"),
     path('matches/delete/<int:match_id>/', match_delete_view, name='match-delete'),
-    path("api/trainings/<int:taining_id>/", TrainingUpdateView.as_view(), name="training-update"),
+    path("trainings/<int:taining_id>/", TrainingUpdateView, name="training-update"),
 
 ]
