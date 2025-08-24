@@ -5,10 +5,19 @@ from django.conf import settings
 class Club(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    # Ďalšie polia ako adresa, logo, kontakty, ...
+
+    address = models.CharField(max_length=255, blank=True, null=True)
+    location_lat = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    location_lng = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+
+    phone = models.CharField(max_length=30, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    contact_person = models.CharField(max_length=100, blank=True, null=True)
+    iban = models.CharField(max_length=34, blank=True, null=True)
 
     def __str__(self):
         return self.name
+
 
 class Role(models.TextChoices):
     PLAYER = 'player', 'Hráč'

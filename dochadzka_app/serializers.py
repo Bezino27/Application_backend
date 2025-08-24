@@ -5,7 +5,7 @@ from django.utils.timezone import localtime
 class ClubSerializer(serializers.ModelSerializer):
     class Meta:
         model = Club
-        fields = ['id', 'name', 'description']
+        fields = '__all__'
 
 
 
@@ -413,3 +413,5 @@ class TrainingUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Training
         fields = ['id', 'description', 'location', 'date']  # alebo aj 'category', ak chceš meniť
+
+
