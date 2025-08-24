@@ -76,3 +76,32 @@ def send_match_notifications(match_id):
 
     for player in players:
         send_push_notification(player, f"Nový zápas: {match.opponent}", f"{match.location} ")
+
+
+@shared_task
+def send_training_updated_notification(training_id):
+    try:
+        training = Training.objects.get(id=training_id)
+    except Training.DoesNotExist:
+        logger.warning(f"Tréning s ID {training_id} neexistuje")
+        return
+
+    players = User.objects.filter(
+        roles__category=training.category,
+        roles__role=Role.PLAYER
+    ).distinct()
+
+    for player in players:
+        tokens = ExpoPushToken.objects.filter(user=player).values_list("token", flat=True)
+        for token in tokens:
+            try:
+                send_push_notification(
+                    token,
+                    "Zmena tréningu!",
+                    f"{training.description} - {training.date.strftime('%d.%m.%Y')} v {training.location}",
+                    user_id=0,
+                    user_name="tréning"
+                )
+                logger.info(f"Notifikácia o zmene tréningu pre {player.username} → {token}")
+            except Exception as e:
+                logger.warning(f"Chyba pri notifikácii pre {player.username} → {token}: {str(e)}")

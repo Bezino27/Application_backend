@@ -1380,6 +1380,7 @@ from rest_framework import status
 from .models import Training
 from .serializers import TrainingUpdateSerializer
 
+
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
 def training_update_view(request, training_id):
@@ -1396,5 +1397,9 @@ def training_update_view(request, training_id):
         serializer = TrainingUpdateSerializer(training, data=request.data)
         if serializer.is_valid():
             serializer.save()
+
+            # ✅ Spusti Celery task na poslanie notifikácie
+            send_training_notifications.delay(training.id)
+
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
