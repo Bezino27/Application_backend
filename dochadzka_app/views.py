@@ -1373,18 +1373,32 @@ def match_delete_view(request,  match_id: int):
 
 
 
-# views.py
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.response import Response
+from rest_framework import status
 from .models import Training
 from .serializers import TrainingUpdateSerializer
 
-class TrainingUpdateView(RetrieveUpdateAPIView):
-    queryset = Training.objects.all()
-    serializer_class = TrainingUpdateSerializer
-    permission_classes = [IsAuthenticated]
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def training_update_view(request, training_id):
+    try:
+        training = Training.objects.get(id=training_id)
+    except Training.DoesNotExist:
+        return Response({'error': 'Tréning neexistuje'}, status=status.HTTP_404_NOT_FOUND)
 
-    def get_queryset(self):
-        # Tréner smie upravovať len tréningy vo svojich kategóriách
-        user = self.request.user
-        return Training.objects.filter(category__in=user.categories_as_coach.all())
+    # ✅ Povoliť len trénerom vlastných kategórií
+    if request.user not in training.category.coaches.all():
+        return Response({'error': 'Nemáš oprávnenie upravovať tento tréning'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'GET':
+        serializer = TrainingUpdateSerializer(training)
+        return Response(serializer.data)
+
+    if request.method == 'PUT':
+        serializer = TrainingUpdateSerializer(training, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
