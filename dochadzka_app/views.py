@@ -1524,8 +1524,8 @@ def coach_attendance_summary(request):
         for cat_id in category_ids:
             trainings = Training.objects.filter(category_id=cat_id)
             total = trainings.count()
-            present = TrainingAttendance.objects.filter(player=player, training__category_id=cat_id, status='present').count()
-
+            present = TrainingAttendance.objects.filter(user=player, training__category_id=cat_id,
+                                                        status='present').count()
             if total == 0:
                 continue
 
