@@ -1552,3 +1552,54 @@ def coach_attendance_summary(request):
         result.append(player_data)
 
     return Response(result)
+
+
+# views.py
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def player_attendance_detail(request, player_id):
+    user = request.user
+    coach_roles = user.roles.filter(role='coach')
+    category_ids = coach_roles.values_list('category__id', flat=True).distinct()
+
+    try:
+        player = User.objects.get(id=player_id)
+    except User.DoesNotExist:
+        return Response({'error': 'Player not found'}, status=404)
+
+    # over, že tréner má prístup k danému hráčovi (cez spoločné kategórie)
+    if not player.roles.filter(role='player', category__id__in=category_ids).exists():
+        return Response({'error': 'Unauthorized'}, status=403)
+
+    response_data = {
+        "player_id": player.id,
+        "name": f"{player.first_name} {player.last_name}",
+        "number": player.number,
+        "birth_date": player.birth_date,
+        "position": player.position.name if player.position else None,
+        "categories": []
+    }
+
+    for cat_id in category_ids:
+        category_trainings = Training.objects.filter(category_id=cat_id).order_by('-date')
+        total = category_trainings.count()
+        present = TrainingAttendance.objects.filter(user=player, training__category_id=cat_id, status='present').count()
+        absent = TrainingAttendance.objects.filter(user=player, training__category_id=cat_id, status='absent').count()
+        unknown = total - present - absent
+
+        if total == 0:
+            continue
+
+        percent = round((present / total) * 100, 1)
+
+        response_data['categories'].append({
+            'category_id': cat_id,
+            'category_name': category_trainings.first().category.name if category_trainings.exists() else '',
+            'present': present,
+            'absent': absent,
+            'unknown': unknown,
+            'total': total,
+            'percentage': percent
+        })
+
+    return Response(response_data)
