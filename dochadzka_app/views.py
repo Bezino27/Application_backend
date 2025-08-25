@@ -1554,21 +1554,24 @@ def coach_attendance_summary(request):
     return Response(result)
 
 
-# views.py
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def player_attendance_detail(request, player_id):
     user = request.user
     coach_roles = user.roles.filter(role='coach')
-    category_ids = coach_roles.values_list('category__id', flat=True).distinct()
+    coach_category_ids = set(coach_roles.values_list('category__id', flat=True))
 
     try:
         player = User.objects.get(id=player_id)
     except User.DoesNotExist:
         return Response({'error': 'Player not found'}, status=404)
 
-    # over, že tréner má prístup k danému hráčovi (cez spoločné kategórie)
-    if not player.roles.filter(role='player', category__id__in=category_ids).exists():
+    # nájdi kategórie hráča
+    player_categories = player.roles.filter(role='player')
+    player_category_ids = set(player_categories.values_list('category__id', flat=True))
+
+    # over, že tréner má aspoň jednu spoločnú kategóriu s hráčom
+    if not coach_category_ids.intersection(player_category_ids):
         return Response({'error': 'Unauthorized'}, status=403)
 
     response_data = {
@@ -1576,15 +1579,25 @@ def player_attendance_detail(request, player_id):
         "name": f"{player.first_name} {player.last_name}",
         "number": player.number,
         "birth_date": player.birth_date,
+        "email": player.email,
+        "email_2": player.email_2,
+        "height": player.height,
+        "weight": player.weight,
+        "side": player.side,
         "position": player.position.name if player.position else None,
         "categories": []
     }
 
-    for cat_id in category_ids:
-        category_trainings = Training.objects.filter(category_id=cat_id).order_by('-date')
-        total = category_trainings.count()
-        present = TrainingAttendance.objects.filter(user=player, training__category_id=cat_id, status='present').count()
-        absent = TrainingAttendance.objects.filter(user=player, training__category_id=cat_id, status='absent').count()
+    # pre každú kategóriu hráča, kde tréner má zároveň prístup
+    for role in player_categories:
+        category = role.category
+        if category.id not in coach_category_ids:
+            continue
+
+        trainings = Training.objects.filter(category=category).order_by('-date')
+        total = trainings.count()
+        present = TrainingAttendance.objects.filter(user=player, training__category=category, status='present').count()
+        absent = TrainingAttendance.objects.filter(user=player, training__category=category, status='absent').count()
         unknown = total - present - absent
 
         if total == 0:
@@ -1593,8 +1606,8 @@ def player_attendance_detail(request, player_id):
         percent = round((present / total) * 100, 1)
 
         response_data['categories'].append({
-            'category_id': cat_id,
-            'category_name': category_trainings.first().category.name if category_trainings.exists() else '',
+            'category_id': category.id,
+            'category_name': category.name,
             'present': present,
             'absent': absent,
             'unknown': unknown,
