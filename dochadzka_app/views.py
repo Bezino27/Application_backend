@@ -1520,11 +1520,20 @@ def coach_attendance_summary(request):
 
         total_percent = 0.0
 
-        for cat_id in category_ids:
+        # ✅ Iteruj iba cez kategórie, kde má hráč rolu hráča
+        player_category_ids = player.roles.filter(
+            role='player',
+            category__id__in=category_ids
+        ).values_list('category__id', flat=True).distinct()
+
+        for cat_id in player_category_ids:
             trainings = Training.objects.filter(category_id=cat_id)
             total = trainings.count()
-            present = TrainingAttendance.objects.filter(user=player, training__category_id=cat_id,
-                                                        status='present').count()
+            present = TrainingAttendance.objects.filter(
+                user=player,
+                training__category_id=cat_id,
+                status='present'
+            ).count()
 
             if total == 0:
                 continue
