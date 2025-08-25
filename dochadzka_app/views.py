@@ -1511,7 +1511,7 @@ def coach_attendance_summary(request):
     for player in players:
         player_data = {
             "player_id": player.id,
-            "name": player.name,
+            "name": f"{player.first_name} {player.last_name}",
             "birth_date": player.birth_date,
             "position": player.position.name if player.position else None,
             "number": player.number,
