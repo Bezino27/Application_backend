@@ -7,7 +7,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     set_training_attendance, list_clubs, test_push, create_training_view, user_categories_view,
                     training_detail_view, coach_trainings_view, change_password_view, chat_messages_view,
                     users_in_club, assign_role, remove_role, categories_in_club, coach_players_view,
-                    training_update_view, club_detail,
+                    training_update_view, club_detail, coach_attendance_summary,
                     all_players_with_roles, player_trainings_history_view, positions_list, player_matches_view,
                     create_match_participation, create_match_view, jersey_numbers_view, club_documents_view,
                     upload_document, match_delete_view, assign_players_to_category, match_stats_view, match_detail_view,
@@ -64,4 +64,6 @@ urlpatterns = [
     path("assign-players-to-category/", assign_players_to_category, name="assign_players_to_category"),
     path("set-preferrd-role/", set_preferred_role, name="set_preferred_role"),
     path('clubs/<int:club_id>/', club_detail, name='club_detail'),
+    path('coach-attendance-summary/', coach_attendance_summary, name='coach_attendance_summary'),
+
 ]

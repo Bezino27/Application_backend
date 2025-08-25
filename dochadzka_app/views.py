@@ -1489,3 +1489,62 @@ def club_detail(request, club_id):
         "iban": club.iban,
     }
     return Response(data)
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.db.models import Count, Q
+from .models import User
+from .models import TrainingAttendance, Training
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def coach_attendance_summary(request):
+    user = request.user
+    coach_roles = user.roles.filter(role='coach')
+
+    category_ids = coach_roles.values_list('category__id', flat=True).distinct()
+    players = User.objects.filter(roles__category__id__in=category_ids, roles__role='player').distinct()
+
+    result = []
+    for player in players:
+        player_data = {
+            "player_id": player.id,
+            "name": player.name,
+            "birth_date": player.birth_date,
+            "position": player.position.name if player.position else None,
+            "number": player.number,
+            "categories": [],
+        }
+
+        total_present = 0
+        total_count = 0
+
+        for cat_id in category_ids:
+            trainings = Training.objects.filter(category_id=cat_id)
+            total = trainings.count()
+            present = TrainingAttendance.objects.filter(player=player, training__category_id=cat_id, status='present').count()
+
+            if total == 0:
+                continue
+
+            percent = round((present / total) * 100, 1)
+
+            player_data['categories'].append({
+                'category_id': cat_id,
+                'category_name': trainings.first().category.name if trainings.exists() else '',
+                'attendance_percentage': percent
+            })
+
+            total_present += present
+            total_count += total
+
+        if total_count > 0:
+            player_data['overall_attendance'] = round((total_present / total_count) * 100, 1)
+        else:
+            player_data['overall_attendance'] = 0.0
+
+        result.append(player_data)
+
+    return Response(result)
