@@ -1750,3 +1750,43 @@ def update_member_payment(request, pk):
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=400)
+
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAdminUser])
+def admin_member_payments(request):
+    if request.method == 'GET':
+        payments = MemberPayment.objects.select_related('user').filter(club=request.user.club)
+        data = [
+            {
+                "id": p.id,
+                "amount": str(p.amount),
+                "due_date": p.due_date,
+                "is_paid": p.is_paid,
+                "description": p.description,
+                "variable_symbol": p.variable_symbol,
+                "user": {
+                    "id": p.user.id,
+                    "name": p.user.name,
+                    "username": p.user.username,
+                },
+            }
+            for p in payments
+        ]
+        return Response(data)
+
+    elif request.method == 'PUT':
+        payment_id = request.data.get("id")
+        is_paid = request.data.get("is_paid")
+
+        if payment_id is None or is_paid is None:
+            return Response({"error": "Chýbajú údaje."}, status=400)
+
+        try:
+            payment = MemberPayment.objects.get(id=payment_id, club=request.user.club)
+            payment.is_paid = is_paid
+            payment.save()
+            return Response({"success": True})
+        except MemberPayment.DoesNotExist:
+            return Response({"error": "Platba neexistuje."}, status=404)
+
