@@ -1678,21 +1678,18 @@ def club_payment_settings_detail(request, pk):
 @permission_classes([IsAuthenticated])
 def member_payments(request):
     user = request.user
-    if user.is_staff:
+    show_all = request.query_params.get('all') == 'true'
+
+    # Iba ak má rolu admin a chce všetko
+    is_admin = user.roles.filter(role="admin").exists()  # uprav podľa svojho modelu
+
+    if show_all and is_admin:
         payments = MemberPayment.objects.all()
     else:
         payments = MemberPayment.objects.filter(user=user)
 
     serializer = MemberPaymentSerializer(payments, many=True)
     return Response(serializer.data)
-
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAdminUser
-from rest_framework.response import Response
-from rest_framework import status
-from django.contrib.auth import get_user_model
-from .models import MemberPayment, ClubPaymentSettings
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
