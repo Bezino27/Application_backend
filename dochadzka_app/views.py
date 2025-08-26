@@ -1641,8 +1641,17 @@ def club_payment_settings_list(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from .models import ClubPaymentSettings
+from .serializers import ClubPaymentSettingsSerializer
+
+
 @api_view(['GET', 'PUT', 'DELETE'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAuthenticated])  # ← zmenené z IsAdminUser
 def club_payment_settings_detail(request, pk):
     setting = get_object_or_404(ClubPaymentSettings, pk=pk)
 
@@ -1650,7 +1659,11 @@ def club_payment_settings_detail(request, pk):
         serializer = ClubPaymentSettingsSerializer(setting)
         return Response(serializer.data)
 
-    elif request.method == 'PUT':
+    # PUT/DELETE len pre admina
+    if not request.user.is_staff:
+        return Response({"detail": "Len admin môže upravovať nastavenia."}, status=403)
+
+    if request.method == 'PUT':
         serializer = ClubPaymentSettingsSerializer(setting, data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -1660,7 +1673,6 @@ def club_payment_settings_detail(request, pk):
     elif request.method == 'DELETE':
         setting.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
