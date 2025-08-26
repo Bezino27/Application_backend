@@ -1767,7 +1767,7 @@ def admin_member_payments(request):
                 "variable_symbol": p.variable_symbol,
                 "user": {
                     "id": p.user.id,
-                    "name": p.user.name,
+                    "name": f"{p.user.first_name} {p.user.last_name}".strip() or p.user.username,
                     "username": p.user.username,
                 },
             }
