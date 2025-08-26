@@ -1674,3 +1674,54 @@ def member_payments(request):
     serializer = MemberPaymentSerializer(payments, many=True)
     return Response(serializer.data)
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import get_user_model
+from .models import MemberPayment, ClubPaymentSettings
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def create_member_payments(request):
+    club = request.user.club
+    try:
+        settings = ClubPaymentSettings.objects.get(club=club)
+    except ClubPaymentSettings.DoesNotExist:
+        return Response({"error": "Klub nemá nastavené platobné údaje."}, status=400)
+
+    amount = request.data.get("amount")
+    due_date = request.data.get("due_date")
+    category_id = request.data.get("category_id")
+    user_id = request.data.get("user_id")
+
+    if not amount or not due_date:
+        return Response({"error": "Zadaj amount a due_date."}, status=400)
+
+    # výber používateľov
+    if user_id:
+        users = User.objects.filter(id=user_id, club=club)
+    elif category_id:
+        user_ids = UserCategoryRole.objects.filter(
+            category_id=category_id,
+            role='player'
+        ).values_list('user_id', flat=True)
+        users = User.objects.filter(id__in=user_ids, club=club)
+    else:
+        users = User.objects.filter(club=club)
+
+    created = []
+    for user in users:
+        variable_symbol = f"{settings.variable_symbol_prefix}{user.id:04d}"
+        payment = MemberPayment.objects.create(
+            user=user,
+            club=club,
+            amount=amount,
+            due_date=due_date,
+            variable_symbol=variable_symbol,
+            is_paid=False,
+        )
+        created.append(payment.id)
+
+    return Response({"created_payments": created}, status=201)

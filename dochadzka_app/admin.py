@@ -11,7 +11,7 @@ from .models import (
     TrainingAttendance,
     Match,
     MatchParticipation,
-    Announcement, ExpoPushToken, Message, MessageReaction, MatchNomination,
+    Announcement, ExpoPushToken, Message, MessageReaction, MatchNomination, ClubPaymentSettings, MemberPayment,
 )
 
 
@@ -53,6 +53,13 @@ class CategoryAdmin(admin.ModelAdmin):
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ('message', 'user', 'created_at', 'emoji')
 
+@admin.register(MemberPayment)
+class MemberPayment(admin.ModelAdmin):
+    list_display = ('user', 'club', 'amount', 'due_date', 'variable_symbol', 'is_paid', 'created_at')
+
+@admin.register(ClubPaymentSettings)
+class ClubPaymentSettings(admin.ModelAdmin):
+    list_display = ('club', 'iban', 'variable_symbol_prefix', 'payment_cycle', 'due_day')
 
 @admin.register(Club)
 class ClubAdmin(admin.ModelAdmin):
