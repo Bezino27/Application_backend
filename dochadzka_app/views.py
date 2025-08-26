@@ -1616,3 +1616,61 @@ def player_attendance_detail(request, player_id):
         })
 
     return Response(response_data)
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from .models import ClubPaymentSettings, MemberPayment
+from .serializers import ClubPaymentSettingsSerializer, MemberPaymentSerializer
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAdminUser])
+def club_payment_settings_list(request):
+    if request.method == 'GET':
+        settings = ClubPaymentSettings.objects.all()
+        serializer = ClubPaymentSettingsSerializer(settings, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        serializer = ClubPaymentSettingsSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAdminUser])
+def club_payment_settings_detail(request, pk):
+    setting = get_object_or_404(ClubPaymentSettings, pk=pk)
+
+    if request.method == 'GET':
+        serializer = ClubPaymentSettingsSerializer(setting)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        serializer = ClubPaymentSettingsSerializer(setting, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        setting.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def member_payments(request):
+    user = request.user
+    if user.is_staff:
+        payments = MemberPayment.objects.all()
+    else:
+        payments = MemberPayment.objects.filter(user=user)
+
+    serializer = MemberPaymentSerializer(payments, many=True)
+    return Response(serializer.data)
+

@@ -415,3 +415,15 @@ class TrainingUpdateSerializer(serializers.ModelSerializer):
         fields = ['id', 'description', 'location', 'date']  # alebo aj 'category', ak chceš meniť
 
 
+from rest_framework import serializers
+from .models import ClubPaymentSettings, MemberPayment
+
+class ClubPaymentSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClubPaymentSettings
+        fields = '__all__'
+
+class MemberPaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MemberPayment
+        fields = '__all__'

@@ -200,4 +200,30 @@ class MatchNomination(models.Model):
     class Meta:
         unique_together = ('match', 'user')
 
+from django.db import models
+from django.contrib.auth import get_user_model
 
+class PaymentCycle(models.TextChoices):
+    MONTHLY = 'monthly', 'Mesačný'
+    QUARTERLY = 'quarterly', 'Štvrťročný'
+    HALF_YEAR = 'half_year', 'Polročný'
+    SEASONAL = 'seasonal', 'Celosezónny'
+
+class ClubPaymentSettings(models.Model):
+    club = models.OneToOneField(Club, on_delete=models.CASCADE)
+    iban = models.CharField(max_length=34)
+    variable_symbol_prefix = models.CharField(max_length=10, blank=True)
+    payment_cycle = models.CharField(max_length=20, choices=PaymentCycle.choices)
+    due_day = models.PositiveSmallIntegerField(default=10)  # deň v mesiaci
+
+class MemberPayment(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    club = models.ForeignKey(Club, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    due_date = models.DateField()
+    variable_symbol = models.CharField(max_length=20)
+    is_paid = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} – {self.amount} € – {self.due_date}"
