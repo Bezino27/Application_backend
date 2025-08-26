@@ -1739,3 +1739,14 @@ def create_member_payments(request):
         created.append(payment.id)
 
     return Response({"created_payments": created}, status=201)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAdminUser])
+def update_member_payment(request, pk):
+    payment = get_object_or_404(MemberPayment, pk=pk)
+    serializer = MemberPaymentSerializer(payment, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=400)
