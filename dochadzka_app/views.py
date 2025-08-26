@@ -1707,6 +1707,7 @@ def create_member_payments(request):
     due_date = request.data.get("due_date")
     category_id = request.data.get("category_id")
     user_id = request.data.get("user_id")
+    description = request.data.get("description", "")  # <- pridaj túto riadku
 
     if not amount or not due_date:
         return Response({"error": "Zadaj amount a due_date."}, status=400)
@@ -1733,6 +1734,7 @@ def create_member_payments(request):
             due_date=due_date,
             variable_symbol=variable_symbol,
             is_paid=False,
+            description=description  # <- a túto
         )
         created.append(payment.id)
 

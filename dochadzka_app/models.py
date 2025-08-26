@@ -224,6 +224,9 @@ class MemberPayment(models.Model):
     variable_symbol = models.CharField(max_length=20)
     is_paid = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
+    description = models.CharField(max_length=255, blank=True, default="")  # ← nový stĺpec
 
     def __str__(self):
-        return f"{self.user.username} – {self.amount} € – {self.due_date}"
+        return f"{self.user} – {self.amount} € – VS: {self.variable_symbol}"
+
+
