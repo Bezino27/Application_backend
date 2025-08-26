@@ -1683,7 +1683,7 @@ from .models import MemberPayment, ClubPaymentSettings
 
 
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAuthenticated])
 def create_member_payments(request):
     club = request.user.club
     try:
