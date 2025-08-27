@@ -1909,8 +1909,10 @@ Tu je výpis:
         try:
             data = json.loads(extracted_data)
         except json.JSONDecodeError as e:
-            return Response({"error": f"Neplatný JSON z AI: {str(e)}", "raw": extracted_data}, status=500)
-
+            return Response({
+                "error": f"Neplatný JSON z AI: {str(e)}",
+                "raw_response": extracted_data  # ← toto ti pomôže zistiť, čo AI poslalo
+            }, status=500)
         # Spracujeme dáta
         matches = []
         for row in data:
