@@ -1839,7 +1839,6 @@ from django.core.files.storage import default_storage
 import pdfplumber
 import json
 from .models import MemberPayment
-
 import os
 import json
 import pdfplumber
@@ -1875,12 +1874,13 @@ def upload_pdf_statement_chatgpt(request):
     if not text.strip():
         return Response({"error": "Výpis z PDF je prázdny alebo nečitateľný."}, status=400)
 
-    # Zavoláme ChatGPT na extrakciu údajov
+    # Inicializujeme klienta OpenAI
     try:
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     except Exception as e:
         return Response({"error": f"Chyba pri inicializácii OpenAI klienta: {str(e)}"}, status=500)
 
+    # Pripravíme prompt
     prompt = f"""
 Toto je výpis z banky. Nájdi všetky prichádzajúce transakcie, ktoré obsahujú:
 - variabilný symbol (VS)
@@ -1889,10 +1889,20 @@ Toto je výpis z banky. Nájdi všetky prichádzajúce transakcie, ktoré obsahu
 
 Vráť to ako **platný JSON zoznam** s kľúčmi: vs, amount, date. Nepridávaj žiaden komentár ani text mimo JSON.
 
+[
+  {{
+    "vs": "123456",
+    "amount": 25.50,
+    "date": "2025-08-01"
+  }},
+  ...
+]
+
 Tu je výpis:
 {text}
 """
 
+    # Zavoláme AI
     try:
         response = client.chat.completions.create(
             model="gpt-4o",
@@ -1900,19 +1910,26 @@ Tu je výpis:
                 {"role": "system", "content": "Si expert na bankové transakcie."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0
+            temperature=0,
+            max_tokens=1000
         )
 
         extracted_data = response.choices[0].message.content.strip()
 
-        # Bezpečne načítame JSON
+        if not extracted_data:
+            return Response({
+                "error": "AI nevrátilo žiadny obsah.",
+                "raw_response": str(response)
+            }, status=500)
+
         try:
             data = json.loads(extracted_data)
         except json.JSONDecodeError as e:
             return Response({
                 "error": f"Neplatný JSON z AI: {str(e)}",
-                "raw_response": extracted_data  # ← toto ti pomôže zistiť, čo AI poslalo
+                "raw_response": extracted_data
             }, status=500)
+
         # Spracujeme dáta
         matches = []
         for row in data:
