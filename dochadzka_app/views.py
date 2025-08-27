@@ -1840,6 +1840,16 @@ import pdfplumber
 import json
 from .models import MemberPayment
 
+import os
+import json
+import pdfplumber
+from openai import OpenAI
+from django.core.files.storage import default_storage
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import MemberPayment
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def upload_pdf_statement_chatgpt(request):
@@ -1853,12 +1863,23 @@ def upload_pdf_statement_chatgpt(request):
 
     # Načítame text z PDF
     text = ""
-    with pdfplumber.open(full_path) as pdf:
-        for page in pdf.pages:
-            text += page.extract_text() + "\n"
+    try:
+        with pdfplumber.open(full_path) as pdf:
+            for page in pdf.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+    except Exception as e:
+        return Response({"error": f"Chyba pri čítaní PDF: {str(e)}"}, status=500)
+
+    if not text.strip():
+        return Response({"error": "Výpis z PDF je prázdny alebo nečitateľný."}, status=400)
 
     # Zavoláme ChatGPT na extrakciu údajov
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    try:
+        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    except Exception as e:
+        return Response({"error": f"Chyba pri inicializácii OpenAI klienta: {str(e)}"}, status=500)
 
     prompt = f"""
 Toto je výpis z banky. Nájdi všetky prichádzajúce transakcie, ktoré obsahujú:
@@ -1870,7 +1891,7 @@ Vráť to ako **platný JSON zoznam** s kľúčmi: vs, amount, date. Nepridávaj
 
 Tu je výpis:
 {text}
-    """
+"""
 
     try:
         response = client.chat.completions.create(
@@ -1881,11 +1902,16 @@ Tu je výpis:
             ],
             temperature=0
         )
+
         extracted_data = response.choices[0].message.content.strip()
 
-        # Načítaj JSON odpoveď bezpečne
-        data = json.loads(extracted_data)
+        # Bezpečne načítame JSON
+        try:
+            data = json.loads(extracted_data)
+        except json.JSONDecodeError as e:
+            return Response({"error": f"Neplatný JSON z AI: {str(e)}", "raw": extracted_data}, status=500)
 
+        # Spracujeme dáta
         matches = []
         for row in data:
             vs = str(row.get("vs", "")).strip()
@@ -1903,4 +1929,4 @@ Tu je výpis:
         return Response({"message": f"Spracovaných: {len(matches)}", "matched": matches})
 
     except Exception as e:
-        return Response({"error": f"Chyba pri spracovaní: {str(e)}"}, status=500)
+        return Response({"error": f"Chyba pri spracovaní AI odpovede: {str(e)}"}, status=500)
