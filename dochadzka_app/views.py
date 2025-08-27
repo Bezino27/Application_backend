@@ -1839,6 +1839,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import MemberPayment
 
+import re
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def upload_bank_statement(request):
@@ -1848,34 +1850,44 @@ def upload_bank_statement(request):
 
     file_path = default_storage.save(f"bank_statements/{file.name}", file)
 
-    # Očakávame formát ako SLSP – z extrakcie vyfiltrujeme relevantné riadky
     matches = []
     with pdfplumber.open(default_storage.path(file_path)) as pdf:
         text = ""
         for page in pdf.pages:
             text += page.extract_text()
 
+        # Regex na nájdenie VS
+        vs_regex = r"/VS(\d{4,12})"
+        # Regex na sumy
+        amount_regex = r"Suma:(\-?\d+[.,]?\d*)\s?EUR"
+
         lines = text.split("\n")
         for i, line in enumerate(lines):
-            if "VS:" in line:
-                vs = line.split("VS:")[1].split()[0].strip()
-                amount_line = lines[i - 1]
-                try:
-                    amount_str = amount_line.split()[0].replace("−", "-").replace(",", ".")
-                    amount = float(amount_str)
-                except:
-                    continue
-
-                matched = MemberPayment.objects.filter(
-                    variable_symbol=vs,
-                    amount=amount,
-                    is_paid=False,
-                ).first()
-
-                if matched:
-                    matched.is_paid = True
-                    matched.save()
-                    matches.append({"id": matched.id, "vs": vs, "amount": amount})
+            vs_match = re.search(vs_regex, line)
+            if vs_match:
+                vs = vs_match.group(1)
+                # Hľadaj sumu niekoľko riadkov vyššie
+                amount = None
+                for offset in range(1, 5):
+                    if i - offset >= 0:
+                        amount_match = re.search(amount_regex, lines[i - offset])
+                        if amount_match:
+                            amount_str = amount_match.group(1).replace(",", ".")
+                            try:
+                                amount = float(amount_str)
+                                break
+                            except:
+                                continue
+                if vs and amount is not None:
+                    matched = MemberPayment.objects.filter(
+                        variable_symbol=vs,
+                        amount=amount,
+                        is_paid=False,
+                    ).first()
+                    if matched:
+                        matched.is_paid = True
+                        matched.save()
+                        matches.append({"id": matched.id, "vs": vs, "amount": amount})
 
     return Response({
         "message": f"Spracovaných platieb: {len(matches)}",
