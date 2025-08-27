@@ -1819,3 +1819,33 @@ def save_nordigen_connection(request):
     )
 
     return Response({"message": "Spojenie uložené."})
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import NordigenConnection
+from .nordigen_api import NordigenAPI  # helper trieda s tokenom a volaniami
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_requisition(request):
+    user = request.user
+    club = getattr(user, "club", None)
+
+    if not club:
+        return Response({"error": "Používateľ nemá priradený klub"}, status=400)
+
+    nordigen = NordigenAPI()
+
+    # Vygeneruj requisition
+    response = nordigen.create_requisition(club_name=club.name, redirect_url="https://ludimus.app/nordigen/redirect")
+
+    if not response or "requisition_id" not in response:
+        return Response({"error": "Nepodarilo sa vytvoriť requisition"}, status=500)
+
+    # Dočasne môžeme len vrátiť link, uloženie spravíme neskôr (po úspechu)
+    return Response({
+        "requisition_id": response["requisition_id"],
+        "initiation_url": response["link"]
+    })
