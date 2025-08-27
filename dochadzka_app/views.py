@@ -1831,67 +1831,73 @@ def upload_payments_csv(request):
 
 
 # views.py
-import pdfplumber
-from django.core.files.storage import default_storage
+import openai
+import os
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status
+from django.core.files.storage import default_storage
+import pdfplumber
 from .models import MemberPayment
-from decimal import Decimal
-
-import re
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def upload_bank_statement(request):
+def upload_pdf_statement_chatgpt(request):
     file = request.FILES.get("file")
     if not file:
-        return Response({"error": "Nebyl priložený súbor."}, status=400)
+        return Response({"error": "Súbor nebol priložený"}, status=400)
 
+    # Uložíme PDF
     file_path = default_storage.save(f"bank_statements/{file.name}", file)
+    full_path = default_storage.path(file_path)
 
-    matches = []
-    with pdfplumber.open(default_storage.path(file_path)) as pdf:
-        text = ""
+    # Načítame text z PDF
+    text = ""
+    with pdfplumber.open(full_path) as pdf:
         for page in pdf.pages:
-            text += page.extract_text()
+            text += page.extract_text() + "\n"
 
-        # Regex na nájdenie VS
-        vs_regex = r"/VS(\d{4,12})"
-        # Regex na sumy
-        amount_regex = r"Suma:(\-?\d+[.,]?\d*)\s?EUR"
+    # Zavoláme ChatGPT na extrakciu údajov
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    prompt = f"""
+Toto je výpis z banky. Nájdi všetky prichádzajúce transakcie, ktoré obsahujú:
+- variabilný symbol (VS)
+- sumu v eurách
+- dátum
 
-        lines = text.split("\n")
-        for i, line in enumerate(lines):
-            # Hľadáme VS vo formáte /VS1234567890/
-            vs_match = re.search(r"/VS(\d{1,15})/", line)
-            if vs_match:
-                vs = vs_match.group(1)
+Vráť to ako JSON zoznam s kľúčmi: vs, amount, date.
 
-                # Hľadáme sumu na aktuálnom alebo predchádzajúcom riadku
-                amount_line = line if i == 0 else lines[i - 1]
-                try:
-                    amount_match = re.search(r"(\d+[,.]\d{2})", amount_line)
-                    if amount_match:
-                        amount_str = amount_match.group(1).replace(",", ".")
-                        amount = float(amount_str)
-                    else:
-                        continue
-                except:
-                    continue
+Tu je výpis:
+{text}
+    """
 
-                matched = MemberPayment.objects.filter(
-                    variable_symbol=vs,
-                    is_paid=False,
-                ).filter(amount__gte=Decimal(amount - 0.01), amount__lte=Decimal(amount + 0.01)).first()
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "Si expert na bankové transakcie."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0
+        )
+        extracted_data = response.choices[0].message.content
+        data = eval(extracted_data)  # POZOR: iba ak veríš odpovedi, inak použi `json.loads()`
 
-                if matched:
-                    matched.is_paid = True
-                    matched.save()
-                    matches.append({"id": matched.id, "vs": vs, "amount": amount})
+        matches = []
+        for row in data:
+            vs = str(row["vs"])
+            amount = float(row["amount"])
+            matched = MemberPayment.objects.filter(
+                variable_symbol=vs,
+                amount=amount,
+                is_paid=False
+            ).first()
+            if matched:
+                matched.is_paid = True
+                matched.save()
+                matches.append({"id": matched.id, "vs": vs, "amount": amount})
 
-    return Response({
-        "message": f"Spracovaných platieb: {len(matches)}",
-        "matched": matches
-    })
+        return Response({"message": f"Spracovaných: {len(matches)}", "matched": matches})
+
+    except Exception as e:
+        return Response({"error": f"Chyba pri spracovaní: {str(e)}"}, status=500)
