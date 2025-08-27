@@ -1787,3 +1787,35 @@ def admin_member_payments(request):
         except MemberPayment.DoesNotExist:
             return Response({"error": "Platba neexistuje."}, status=404)
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .models import NordigenConnection, Club
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def save_nordigen_connection(request):
+    user = request.user
+    data = request.data
+
+    club = getattr(user, "club", None)
+    if not club:
+        return Response({"error": "Používateľ nemá priradený klub"}, status=400)
+
+    requisition_id = data.get("requisition_id")
+    account_id = data.get("account_id")
+
+    if not requisition_id or not account_id:
+        return Response({"error": "Chýba requisition_id alebo account_id"}, status=400)
+
+    connection, created = NordigenConnection.objects.update_or_create(
+        club=club,
+        defaults={
+            "requisition_id": requisition_id,
+            "account_id": account_id,
+        }
+    )
+
+    return Response({"message": "Spojenie uložené."})

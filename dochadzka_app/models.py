@@ -230,3 +230,14 @@ class MemberPayment(models.Model):
         return f"{self.user} – {self.amount} € – VS: {self.variable_symbol}"
 
 
+from django.db import models
+from django.conf import settings
+
+class NordigenConnection(models.Model):
+    club = models.OneToOneField(Club, on_delete=models.CASCADE)
+    requisition_id = models.CharField(max_length=128)
+    account_id = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Nordigen pripojenie pre klub {self.club.name}"
