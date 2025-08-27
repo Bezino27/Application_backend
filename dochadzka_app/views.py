@@ -1828,3 +1828,56 @@ def upload_payments_csv(request):
         "updated": updated,
         "not_found": not_found
     })
+
+
+# views.py
+import pdfplumber
+from django.core.files.storage import default_storage
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .models import MemberPayment
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def upload_bank_statement(request):
+    file = request.FILES.get("file")
+    if not file:
+        return Response({"error": "Nebyl priložený súbor."}, status=400)
+
+    file_path = default_storage.save(f"bank_statements/{file.name}", file)
+
+    # Očakávame formát ako SLSP – z extrakcie vyfiltrujeme relevantné riadky
+    matches = []
+    with pdfplumber.open(default_storage.path(file_path)) as pdf:
+        text = ""
+        for page in pdf.pages:
+            text += page.extract_text()
+
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            if "VS:" in line:
+                vs = line.split("VS:")[1].split()[0].strip()
+                amount_line = lines[i - 1]
+                try:
+                    amount_str = amount_line.split()[0].replace("−", "-").replace(",", ".")
+                    amount = float(amount_str)
+                except:
+                    continue
+
+                matched = MemberPayment.objects.filter(
+                    variable_symbol=vs,
+                    amount=amount,
+                    is_paid=False,
+                ).first()
+
+                if matched:
+                    matched.is_paid = True
+                    matched.save()
+                    matches.append({"id": matched.id, "vs": vs, "amount": amount})
+
+    return Response({
+        "message": f"Spracovaných platieb: {len(matches)}",
+        "matched": matches
+    })
