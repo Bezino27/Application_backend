@@ -12,9 +12,19 @@ class NordigenAPI:
     def _get_token(self):
         res = requests.post(
             f"{self.BASE}/token/new/",
-            json={"secret_id": self.secret_id, "secret_key": self.secret_key}
+            json={
+                "secret_id": self.secret_id,
+                "secret_key": self.secret_key
+            }
         )
-        return res.json()["access"]
+        try:
+            res.raise_for_status()
+            return res.json()["access"]
+        except Exception as e:
+            print("❌ Chyba pri získavaní Nordigen tokenu:")
+            print("Status:", res.status_code)
+            print("Odpoveď:", res.text)
+            raise e
 
     def create_requisition(self, club_name, redirect_url):
         headers = {"Authorization": f"Bearer {self.token}"}
@@ -23,11 +33,18 @@ class NordigenAPI:
             headers=headers,
             json={
                 "redirect": redirect_url,
-                "institution_id": "SK_TATRSKBX",  # alebo frontend nech si vyberie banku
+                "institution_id": "SK_TATRSKBX",  # neskôr nastaviteľné
                 "reference": club_name[:35],  # max 36 znakov
             }
         )
-        return res.json()
+        try:
+            res.raise_for_status()
+            return res.json()
+        except Exception as e:
+            print("❌ Chyba pri vytváraní requisition:")
+            print("Status:", res.status_code)
+            print("Odpoveď:", res.text)
+            raise e
 
     def get_requisition_accounts(self, requisition_id):
         headers = {"Authorization": f"Bearer {self.token}"}
@@ -35,5 +52,12 @@ class NordigenAPI:
             f"{self.BASE}/requisitions/{requisition_id}/",
             headers=headers
         )
-        data = res.json()
-        return data.get("accounts", [])
+        try:
+            res.raise_for_status()
+            data = res.json()
+            return data.get("accounts", [])
+        except Exception as e:
+            print("❌ Chyba pri získavaní účtov:")
+            print("Status:", res.status_code)
+            print("Odpoveď:", res.text)
+            raise e
