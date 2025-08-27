@@ -1916,6 +1916,10 @@ Tu je výpis:
 
         extracted_data = response.choices[0].message.content.strip()
 
+        # Odstráň markdown kódový blok ak je tam
+        if extracted_data.startswith("```") and extracted_data.endswith("```"):
+            extracted_data = "\n".join(extracted_data.split("\n")[1:-1]).strip()
+
         if not extracted_data:
             return Response({
                 "error": "AI nevrátilo žiadny obsah.",
