@@ -1787,3 +1787,44 @@ def admin_member_payments(request):
         except MemberPayment.DoesNotExist:
             return Response({"error": "Platba neexistuje."}, status=404)
 
+from rest_framework.decorators import api_view, permission_classes, parser_classes
+from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser
+import csv, io
+from .models import MemberPayment
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+@parser_classes([MultiPartParser])
+def upload_payments_csv(request):
+    file = request.FILES.get("file")
+    if not file:
+        return Response({"error": "CSV súbor nebol nahraný."}, status=400)
+
+    decoded_file = file.read().decode("utf-8")
+    io_string = io.StringIO(decoded_file)
+    reader = csv.DictReader(io_string, delimiter=';')
+
+    updated = 0
+    not_found = []
+
+    for row in reader:
+        vs = row.get("VS") or row.get("Variable Symbol")
+        amount = row.get("Amount") or row.get("Suma")
+
+        if not vs or not amount:
+            continue
+
+        try:
+            payment = MemberPayment.objects.get(variable_symbol=vs.strip(), amount=amount.strip())
+            payment.is_paid = True
+            payment.save()
+            updated += 1
+        except MemberPayment.DoesNotExist:
+            not_found.append(vs)
+
+    return Response({
+        "updated": updated,
+        "not_found": not_found
+    })
