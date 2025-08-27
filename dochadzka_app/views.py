@@ -1863,31 +1863,33 @@ def upload_bank_statement(request):
 
         lines = text.split("\n")
         for i, line in enumerate(lines):
-            vs_match = re.search(vs_regex, line)
+            # Hľadáme VS vo formáte /VS1234567890/
+            vs_match = re.search(r"/VS(\d{1,15})/", line)
             if vs_match:
                 vs = vs_match.group(1)
-                # Hľadaj sumu niekoľko riadkov vyššie
-                amount = None
-                for offset in range(1, 5):
-                    if i - offset >= 0:
-                        amount_match = re.search(amount_regex, lines[i - offset])
-                        if amount_match:
-                            amount_str = amount_match.group(1).replace(",", ".")
-                            try:
-                                amount = float(amount_str)
-                                break
-                            except:
-                                continue
-                if vs and amount is not None:
-                    matched = MemberPayment.objects.filter(
-                        variable_symbol=vs,
-                        amount=amount,
-                        is_paid=False,
-                    ).first()
-                    if matched:
-                        matched.is_paid = True
-                        matched.save()
-                        matches.append({"id": matched.id, "vs": vs, "amount": amount})
+
+                # Hľadáme sumu na aktuálnom alebo predchádzajúcom riadku
+                amount_line = line if i == 0 else lines[i - 1]
+                try:
+                    amount_match = re.search(r"(\d+[,.]\d{2})", amount_line)
+                    if amount_match:
+                        amount_str = amount_match.group(1).replace(",", ".")
+                        amount = float(amount_str)
+                    else:
+                        continue
+                except:
+                    continue
+
+                matched = MemberPayment.objects.filter(
+                    variable_symbol=vs,
+                    amount=amount,
+                    is_paid=False,
+                ).first()
+
+                if matched:
+                    matched.is_paid = True
+                    matched.save()
+                    matches.append({"id": matched.id, "vs": vs, "amount": amount})
 
     return Response({
         "message": f"Spracovaných platieb: {len(matches)}",
