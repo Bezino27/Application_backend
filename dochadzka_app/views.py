@@ -1830,14 +1830,14 @@ def upload_payments_csv(request):
     })
 
 
-# views.py
-import openai
+from openai import OpenAI
 import os
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.core.files.storage import default_storage
 import pdfplumber
+import json
 from .models import MemberPayment
 
 @api_view(["POST"])
@@ -1858,21 +1858,22 @@ def upload_pdf_statement_chatgpt(request):
             text += page.extract_text() + "\n"
 
     # Zavoláme ChatGPT na extrakciu údajov
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
     prompt = f"""
 Toto je výpis z banky. Nájdi všetky prichádzajúce transakcie, ktoré obsahujú:
 - variabilný symbol (VS)
 - sumu v eurách
 - dátum
 
-Vráť to ako JSON zoznam s kľúčmi: vs, amount, date.
+Vráť to ako **platný JSON zoznam** s kľúčmi: vs, amount, date. Nepridávaj žiaden komentár ani text mimo JSON.
 
 Tu je výpis:
 {text}
     """
 
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {"role": "system", "content": "Si expert na bankové transakcie."},
@@ -1880,13 +1881,15 @@ Tu je výpis:
             ],
             temperature=0
         )
-        extracted_data = response.choices[0].message.content
-        data = eval(extracted_data)  # POZOR: iba ak veríš odpovedi, inak použi `json.loads()`
+        extracted_data = response.choices[0].message.content.strip()
+
+        # Načítaj JSON odpoveď bezpečne
+        data = json.loads(extracted_data)
 
         matches = []
         for row in data:
-            vs = str(row["vs"])
-            amount = float(row["amount"])
+            vs = str(row.get("vs", "")).strip()
+            amount = float(str(row.get("amount", "0")).replace(",", "."))
             matched = MemberPayment.objects.filter(
                 variable_symbol=vs,
                 amount=amount,
