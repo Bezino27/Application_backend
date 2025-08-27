@@ -75,5 +75,5 @@ urlpatterns = [
     path('member-payments/<int:pk>/', update_member_payment),
     path('admin-member-payments/', admin_member_payments),
     path("upload-payments-csv/", upload_payments_csv, name="upload-payments-csv"),
-    path("api/upload-pdf-chatgpt/", upload_pdf_statement_chatgpt),
+    path("upload-pdf-chatgpt/", upload_pdf_statement_chatgpt),
 ]
