@@ -1838,6 +1838,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from .models import MemberPayment
+from decimal import Decimal
 
 import re
 
@@ -1882,9 +1883,8 @@ def upload_bank_statement(request):
 
                 matched = MemberPayment.objects.filter(
                     variable_symbol=vs,
-                    amount=amount,
                     is_paid=False,
-                ).first()
+                ).filter(amount__gte=Decimal(amount - 0.01), amount__lte=Decimal(amount + 0.01)).first()
 
                 if matched:
                     matched.is_paid = True
