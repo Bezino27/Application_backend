@@ -976,7 +976,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
 from .serializers import MatchSerializer,MatchDetailSerializer
-
+from .tasks import notify_match_created, notify_match_deleted,notify_match_updated,notify_nomination_changed
 from django.db import transaction
 
 @api_view(["POST"])
@@ -1006,6 +1006,8 @@ def create_match_view(request):
                 serializer.is_valid(raise_exception=True)
                 serializer.save(club=club)
                 created_matches.append(serializer.data)
+                serializer.save(club=club)
+                notify_match_created.delay(serializer.instance.id)
 
         return Response(created_matches, status=201)
 
@@ -1239,7 +1241,8 @@ def match_nominations_view(request, match_id):
                 goals=item.get("goals", 0),
                 plus_minus=item.get("plus_minus", 0),
             )
-
+        user_ids = [item["user"] for item in data]
+        notify_nomination_changed.delay(match.id, user_ids)
         return Response({"success": "Nominácia bola uložená"})
 
 from django.utils import timezone
@@ -1370,6 +1373,7 @@ def match_delete_view(request,  match_id: int):
             {"detail": "Zápas má naviazané dáta (napr. štatistiky/účasti) a nie je možné ho zmazať."},
             status=409
         )
+    notify_match_deleted.delay(match.id, match.opponent)
 
     return Response(status=204)
 
@@ -1980,6 +1984,8 @@ def update_match_view(request, match_id):
 
         # 🔁 znovu naserializuj po uložení, aby fungoval .data
         updated = MatchSerializer(match, context={"request": request})
+        serializer.save()
+        notify_match_updated.delay(match.id)
         return Response(updated.data)
 
     return Response(serializer.errors, status=400)
