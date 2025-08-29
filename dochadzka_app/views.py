@@ -1397,7 +1397,8 @@ def match_delete_view(request, match_id: int):
         return Response({"detail": "Nemáš oprávnenie zmazať tento zápas."}, status=403)
 
     try:
-        notify_match_deleted.delay(match.id, match.opponent)
+        # pošli všetko, čo budeš potrebovať, lebo zápas sa zmaže
+        notify_match_deleted.delay(match.opponent, match.category_id, match.club_id)
         match.delete()
     except ProtectedError:
         return Response(
@@ -1406,7 +1407,6 @@ def match_delete_view(request, match_id: int):
         )
 
     return Response(status=204)
-
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated

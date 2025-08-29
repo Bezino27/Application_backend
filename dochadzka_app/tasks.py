@@ -162,13 +162,12 @@ def notify_match_updated(match_id):
         print(f"❌ notify_match_updated: {e}")
 
 @shared_task
-def notify_match_deleted(match_id, opponent):
+def notify_match_deleted(opponent, category_id, club_id):
     try:
-        match = Match.objects.get(id=match_id)
         users = User.objects.filter(
-            roles__category=match.category,
+            roles__category_id=category_id,
             roles__role='player',
-            club=match.club
+            club_id=club_id
         ).distinct()
 
         tokens = get_tokens(users)
@@ -179,10 +178,8 @@ def notify_match_deleted(match_id, opponent):
                 title="Zápas zrušený",
                 message=f"Zápas proti {opponent} bol zrušený."
             )
-
     except Exception as e:
         print(f"❌ notify_match_deleted: {e}")
-
 @shared_task
 def notify_nomination_changed(match_id, user_ids):
     try:
