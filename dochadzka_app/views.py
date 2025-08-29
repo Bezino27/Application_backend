@@ -1724,6 +1724,8 @@ def member_payments(request):
     serializer = MemberPaymentSerializer(payments, many=True)
     return Response(serializer.data)
 
+from dochadzka_app.tasks import notify_created_member_payment, notify_payment_status
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_member_payments(request):
@@ -1766,6 +1768,7 @@ def create_member_payments(request):
             is_paid=False,
             description=description  # <- a túto
         )
+        notify_created_member_payment.delay(user.id, amount, due_date)
         created.append(payment.id)
 
     return Response({"created_payments": created}, status=201)
@@ -1816,62 +1819,17 @@ def admin_member_payments(request):
             payment = MemberPayment.objects.get(id=payment_id, club=request.user.club)
             payment.is_paid = is_paid
             payment.save()
+            notify_payment_status.delay(user_id=payment.user.id, is_paid=is_paid)
             return Response({"success": True})
         except MemberPayment.DoesNotExist:
             return Response({"error": "Platba neexistuje."}, status=404)
 
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAdminUser
-from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
 import csv, io
-from .models import MemberPayment
-
-@api_view(["POST"])
-@permission_classes([IsAdminUser])
-@parser_classes([MultiPartParser])
-def upload_payments_csv(request):
-    file = request.FILES.get("file")
-    if not file:
-        return Response({"error": "CSV súbor nebol nahraný."}, status=400)
-
-    decoded_file = file.read().decode("utf-8")
-    io_string = io.StringIO(decoded_file)
-    reader = csv.DictReader(io_string, delimiter=';')
-
-    updated = 0
-    not_found = []
-
-    for row in reader:
-        vs = row.get("VS") or row.get("Variable Symbol")
-        amount = row.get("Amount") or row.get("Suma")
-
-        if not vs or not amount:
-            continue
-
-        try:
-            payment = MemberPayment.objects.get(variable_symbol=vs.strip(), amount=amount.strip())
-            payment.is_paid = True
-            payment.save()
-            updated += 1
-        except MemberPayment.DoesNotExist:
-            not_found.append(vs)
-
-    return Response({
-        "updated": updated,
-        "not_found": not_found
-    })
 
 
-from openai import OpenAI
-import os
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from django.core.files.storage import default_storage
-import pdfplumber
-import json
-from .models import MemberPayment
 import os
 import json
 import pdfplumber
@@ -1879,7 +1837,6 @@ from openai import OpenAI
 from django.core.files.storage import default_storage
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 from .models import MemberPayment
 
 @api_view(["POST"])
@@ -1980,6 +1937,7 @@ Tu je výpis:
             if matched:
                 matched.is_paid = True
                 matched.save()
+                notify_payment_status.delay(user_id=matched.user.id, is_paid=True)
                 matches.append({"id": matched.id, "vs": vs, "amount": amount})
 
         return Response({"message": f"Spracovaných: {len(matches)}", "matched": matches})

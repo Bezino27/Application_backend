@@ -265,3 +265,47 @@ def notify_match_reminder(match_id, user_ids):
         logger.warning(f"❌ notify_match_reminder: Match {match_id} not found")
     except Exception as e:
         logger.error(f"❌ Chyba pri pripomenutí na zápas: {e}")
+
+
+@shared_task
+def notify_created_member_payment(user_id, amount, due_date):
+    try:
+        user = User.objects.get(id=user_id)
+        tokens = ExpoPushToken.objects.filter(user=user).values_list("token", flat=True)
+
+        for token in tokens:
+            send_push_notification(
+                token=token,
+                title="Nová platba",
+                message=f"Bola ti vytvorená nová platba vo výške {amount} € so splatnosťou do {due_date}.",
+                data={"type": "payment"}
+            )
+            logger.info(f"Notifikácia o novej platbe → {user.username} ({token})")
+    except Exception as e:
+        logger.error(f"Chyba pri notifikácii novej platby: {e}")
+
+
+@shared_task
+def notify_payment_status(user_id, is_paid, amount=None, vs=None):
+    try:
+        user = User.objects.get(id=user_id)
+        tokens = ExpoPushToken.objects.filter(user=user).values_list("token", flat=True)
+
+        if is_paid:
+            title = "Platba prijatá"
+            message = f"Platba vo výške {amount} € s VS {vs} bola úspešne prijatá. Ďakujeme!"
+        else:
+            title = "Platba chýba"
+            message = "Tvoja platba zatiaľ nebola zaznamenaná. Skontroluj prosím svoje prevody."
+
+        for token in tokens:
+            send_push_notification(
+                token=token,
+                title=title,
+                message=message,
+                data={"type": "payment"}
+            )
+            logger.info(f"Notifikácia platby ({'OK' if is_paid else 'CHÝBA'}) → {user.username} ({token})")
+
+    except Exception as e:
+        logger.error(f"Chyba pri posielaní stavu platby: {e}")
