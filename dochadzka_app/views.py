@@ -1954,7 +1954,7 @@ Tu je výpis:
     except Exception as e:
         return Response({"error": f"Chyba pri spracovaní AI odpovede: {str(e)}"}, status=500)
 
-@api_view(['GET', 'PUT', 'PATCH'])  # ← pridaj GET
+@api_view(['GET', 'PUT', 'PATCH'])  # aj GET pre detail
 @permission_classes([IsAuthenticated])
 def update_match_view(request, match_id):
     try:
@@ -1962,12 +1962,11 @@ def update_match_view(request, match_id):
     except Match.DoesNotExist:
         return Response({'error': 'Zápas neexistuje'}, status=404)
 
-    # GET → vráť údaje
     if request.method == 'GET':
-        serializer = MatchSerializer(match)
+        serializer = MatchSerializer(match, context={"request": request})
         return Response(serializer.data)
 
-    # PUT/PATCH → aktualizuj
+    # PUT / PATCH
     is_authorized = request.user.roles.filter(
         Q(role='coach', category=match.category) | Q(role='admin')
     ).exists()
@@ -1978,6 +1977,9 @@ def update_match_view(request, match_id):
     serializer = MatchSerializer(match, data=request.data, partial=True, context={"request": request})
     if serializer.is_valid():
         serializer.save()
-        return Response(serializer.data)
+
+        # 🔁 znovu naserializuj po uložení, aby fungoval .data
+        updated = MatchSerializer(match, context={"request": request})
+        return Response(updated.data)
 
     return Response(serializer.errors, status=400)
