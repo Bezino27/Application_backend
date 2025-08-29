@@ -138,7 +138,7 @@ def notify_match_created(match_id):
         print(f"❌ notify_match_created: {e}")
 
 @shared_task
-def notify_match_updated(match_id):
+def notify_match_updated(match_id,opponent):
     try:
         match = Match.objects.get(id=match_id)
         nominations = MatchNomination.objects.filter(match=match)
@@ -147,8 +147,8 @@ def notify_match_updated(match_id):
         for token in tokens:
             send_push_notification(
                 token,
-                title="Nominácia upravená",
-                message=f"Nominácia na zápas proti {match.opponent} bola upravená. Skontroluj svoju účasť."
+                title="Zmena v Zápase!",
+                message=f"Boli zmené údaje zápasu {opponent}, skontroluj to!"
             )
     except Exception as e:
         print(f"❌ notify_nomination_updated: {e}")
@@ -188,3 +188,19 @@ def notify_nomination_changed(match_id, user_ids):
                 )
     except Exception as e:
         print(f"❌ notify_nomination_changed: {e}")
+
+@shared_task
+def notify_nomination_removed(match_id, user_ids):
+    try:
+        match = Match.objects.get(id=match_id)
+        users = User.objects.filter(id__in=user_ids)
+        tokens = get_tokens(users)
+
+        for token in tokens:
+            send_push_notification(
+                token,
+                title="Zmena v nominácii",
+                message=f"Bol si odstránený z nominácie na zápas proti {match.opponent}."
+            )
+    except Exception as e:
+        print(f"❌ notify_nomination_removed: {e}")

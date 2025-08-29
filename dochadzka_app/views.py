@@ -1191,7 +1191,7 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from .models import Match, MatchNomination
 from .serializers import MatchNominationSerializer
-from .tasks import notify_nomination_changed
+from .tasks import notify_nomination_changed, notify_nomination_removed
 from django.db import transaction
 
 @api_view(["GET", "POST"])
@@ -1239,6 +1239,9 @@ def match_nominations_view(request, match_id):
         if not isinstance(data, list):
             return Response({"error": "Očakáva sa zoznam nominácií."}, status=400)
 
+        # Staré nominácie pred zmazaním
+        old_user_ids = list(MatchNomination.objects.filter(match=match).values_list("user_id", flat=True))
+
         MatchNomination.objects.filter(match=match).delete()
 
         new_nominations = []
@@ -1265,8 +1268,12 @@ def match_nominations_view(request, match_id):
         with transaction.atomic():
             MatchNomination.objects.bulk_create(new_nominations)
 
-        # 🔔 notifikácie hráčom
+        new_user_ids = [item["user"] for item in data]
+        removed_ids = list(set(old_user_ids) - set(new_user_ids))
+
         notify_nomination_changed.delay(match.id, starter_ids + sub_ids)
+        if removed_ids:
+            notify_nomination_removed.delay(match.id, removed_ids)
 
         return Response({"success": "Nominácia bola uložená"})
 from django.utils import timezone
