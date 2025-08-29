@@ -2032,3 +2032,20 @@ def update_match_view(request, match_id):
         return Response(updated.data)
 
     return Response(serializer.errors, status=400)
+
+
+from .tasks import remind_unknown_players
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def remind_attendance_view(request):
+    training_id = request.data.get("training_id")
+    user_ids = request.data.get("user_ids", [])
+
+    if not training_id or not isinstance(user_ids, list):
+        return Response({"error": "Neplatné dáta"}, status=400)
+
+    # Spusti Celery task
+    remind_unknown_players.delay(training_id, user_ids)
+
+    return Response({"status": "ok", "message": "Pripomienky sa odosielajú."})

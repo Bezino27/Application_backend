@@ -12,8 +12,10 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     create_match_participation, create_match_view, jersey_numbers_view, club_documents_view,
                     upload_document, match_delete_view, assign_players_to_category, match_stats_view, match_detail_view,
                     match_nominations_view, player_nominated_matches_view, admin_member_payments,
-                    match_participation_view, club_payment_settings_detail, upload_payments_csv, upload_pdf_statement_chatgpt,
-                   set_preferred_role, club_payment_settings_list,member_payments, create_member_payments, update_member_payment)
+                    match_participation_view, club_payment_settings_detail, upload_payments_csv,
+                    upload_pdf_statement_chatgpt,
+                    set_preferred_role, club_payment_settings_list, member_payments, create_member_payments,
+                    update_member_payment, remind_attendance_view)
 
 app_name = 'dochadzka_app'
 
@@ -77,4 +79,5 @@ urlpatterns = [
     path("upload-payments-csv/", upload_payments_csv, name="upload-payments-csv"),
     path("upload-pdf-chatgpt/", upload_pdf_statement_chatgpt),
     path("matches_edit/<int:match_id>/", update_match_view),
+    path("remind-attendance/", remind_attendance_view),
 ]

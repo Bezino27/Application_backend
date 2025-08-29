@@ -220,3 +220,23 @@ def notify_nomination_removed(match_id, user_ids):
             )
     except Exception as e:
         print(f"❌ notify_nomination_removed: {e}")
+
+@shared_task
+def remind_unknown_players(training_id, user_ids):
+    try:
+        training = Training.objects.get(id=training_id)
+        users = User.objects.filter(id__in=user_ids)
+
+        for user in users:
+            tokens = ExpoPushToken.objects.filter(user=user).values_list("token", flat=True)
+            for token in tokens:
+                send_push_notification(
+                    token,
+                    title="Nezabudni zahlasovať!",
+                    message=f"Stále si nepotvrdil účasť na tréningu {training.description} ({training.date.strftime('%d.%m.%Y')})!",
+                    data={"type": "training", "training_id": training.id}
+                )
+                logger.info(f"Pripomenutie posl. hráčovi {user.username} → {token}")
+
+    except Exception as e:
+        logger.error(f"❌ Chyba pri pripomenutí neodpovedaným: {e}")
