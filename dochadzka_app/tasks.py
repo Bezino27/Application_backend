@@ -246,19 +246,20 @@ def remind_unknown_players(training_id, user_ids):
 def notify_match_reminder(match_id, user_ids):
     try:
         match = Match.objects.get(id=match_id)
+        users = User.objects.filter(id__in=user_ids)
+
+        for user in users:
+            tokens = ExpoPushToken.objects.filter(user=user).values_list("token", flat=True)
+            for token in tokens:
+                send_push_notification(
+                    token=token,
+                    title="📢 Potvrď účasť na zápase",
+                    message=f"Zápas proti {match.opponent} – {match.date.strftime('%d.%m.%Y')}. Nezabudni odpovedať.",
+                    screen="match",
+                    match_id=match.id
+                )
+                logger.info(f"📨 Reminder na zápas poslaný hráčovi {user.username} → {token}")
     except Match.DoesNotExist:
-        print(f"❌ notify_match_reminder: Match {match_id} not found")
-        return
-
-    users = User.objects.filter(id__in=user_ids)
-    for user in users:
-        tokens = ExpoPushToken.objects.filter(user=user).values_list("token", flat=True)
-        for token in tokens:
-            send_push_notification(
-                token=token,
-                title="📢 Potvrď účasť na zápase",
-                message=f"Zápas proti {match.opponent} – {match.date.strftime('%d.%m.%Y %H:%M')}. Nezabudni odpovedať.",
-                screen="match",
-                match_id=match.id,
-            )
-
+        logger.warning(f"❌ notify_match_reminder: Match {match_id} not found")
+    except Exception as e:
+        logger.error(f"❌ Chyba pri pripomenutí na zápas: {e}")
