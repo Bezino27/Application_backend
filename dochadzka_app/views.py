@@ -2027,7 +2027,7 @@ def update_match_view(request, match_id):
 
     if serializer.is_valid():
         serializer.save()
-        notify_match_updated.delay(match.id, match.opponent)
+        notify_match_updated.delay(match.id)
 
         # serializuj znova po uložení (kvôli napr. .data a context)
         updated = MatchSerializer(match, context={"request": request})
