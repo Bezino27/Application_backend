@@ -165,8 +165,6 @@ def notify_match_updated(match_id):
 def notify_match_deleted(match_id, opponent):
     try:
         match = Match.objects.get(id=match_id)
-
-        # Všetci hráči v kategórii daného zápasu
         users = User.objects.filter(
             roles__category=match.category,
             roles__role='player',
