@@ -1390,24 +1390,22 @@ def user_is_admin_or_match_coach(user, category_id: int) -> bool:
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
-def match_delete_view(request,  match_id: int):
+def match_delete_view(request, match_id: int):
     match = get_object_or_404(Match, id=match_id)
 
     if not user_is_admin_or_match_coach(request.user, match.category_id):
         return Response({"detail": "Nemáš oprávnenie zmazať tento zápas."}, status=403)
-    notify_match_deleted.delay(match.id, match.opponent)
+
     try:
+        notify_match_deleted.delay(match.id, match.opponent)
         match.delete()
     except ProtectedError:
-        # ak máš FK s on_delete=PROTECT (napr. štatistiky/účasti)
         return Response(
             {"detail": "Zápas má naviazané dáta (napr. štatistiky/účasti) a nie je možné ho zmazať."},
             status=409
         )
-    notify_match_deleted.delay(match.id, match.opponent)
 
     return Response(status=204)
-
 
 
 from rest_framework.decorators import api_view, permission_classes

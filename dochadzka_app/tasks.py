@@ -164,8 +164,16 @@ def notify_match_updated(match_id):
 @shared_task
 def notify_match_deleted(match_id, opponent):
     try:
-        nominations = MatchNomination.objects.filter(match_id=match_id)
-        tokens = get_tokens([n.user for n in nominations])
+        match = Match.objects.get(id=match_id)
+
+        # Všetci hráči v kategórii daného zápasu
+        users = User.objects.filter(
+            roles__category=match.category,
+            roles__role='player',
+            club=match.club
+        ).distinct()
+
+        tokens = get_tokens(users)
 
         for token in tokens:
             send_push_notification(
@@ -173,9 +181,9 @@ def notify_match_deleted(match_id, opponent):
                 title="Zápas zrušený",
                 message=f"Zápas proti {opponent} bol zrušený."
             )
+
     except Exception as e:
         print(f"❌ notify_match_deleted: {e}")
-
 
 @shared_task
 def notify_nomination_changed(match_id, user_ids):
