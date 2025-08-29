@@ -253,8 +253,8 @@ def notify_match_reminder(match_id, user_ids):
             for token in tokens:
                 send_push_notification(
                     token=token,
-                    title="📢 Potvrď účasť na zápase",
-                    message=f"Zápas proti {match.opponent} – {match.date.strftime('%d.%m.%Y %H:%M')}. Nezabudni odpovedať.",
+                    title="Potvrď účasť na zápase",
+                    message=f"Zápas proti {match.opponent} – {match.date.strftime('%d.%m.%Y')}. Nezabudni odpovedať.",
                     data={
                         "type": "match",
                         "match_id": match.id
