@@ -15,7 +15,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     match_participation_view, club_payment_settings_detail, upload_payments_csv,
                     upload_pdf_statement_chatgpt,
                     set_preferred_role, club_payment_settings_list, member_payments, create_member_payments,
-                    update_member_payment, remind_attendance_view)
+                    update_member_payment, remind_attendance_view, remind_match_attendance_view)
 
 app_name = 'dochadzka_app'
 
@@ -80,6 +80,6 @@ urlpatterns = [
     path("upload-pdf-chatgpt/", upload_pdf_statement_chatgpt),
     path("matches_edit/<int:match_id>/", update_match_view),
     path("remind-attendance/", remind_attendance_view),
-    path("remind-match-attendance/", remind_attendance_view),
+    path("remind-match-attendance/", remind_match_attendance_view),
 
 ]
