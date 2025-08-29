@@ -80,4 +80,6 @@ urlpatterns = [
     path("upload-pdf-chatgpt/", upload_pdf_statement_chatgpt),
     path("matches_edit/<int:match_id>/", update_match_view),
     path("remind-attendance/", remind_attendance_view),
+    path("remind-match-attendance/", remind_attendance_view),
+
 ]

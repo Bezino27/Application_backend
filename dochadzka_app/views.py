@@ -2034,7 +2034,7 @@ def update_match_view(request, match_id):
     return Response(serializer.errors, status=400)
 
 
-from .tasks import remind_unknown_players
+from .tasks import remind_unknown_players,notify_match_reminder
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -2049,3 +2049,23 @@ def remind_attendance_view(request):
     remind_unknown_players.delay(training_id, user_ids)
 
     return Response({"status": "ok", "message": "Pripomienky sa odosielajú."})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def remind_match_attendance_view(request):
+    match_id = request.data.get("match_id")
+    user_ids = request.data.get("user_ids", [])
+
+    if not match_id or not isinstance(user_ids, list):
+        return Response({"detail": "Neplatné dáta."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        match = Match.objects.get(id=match_id)
+    except Match.DoesNotExist:
+        return Response({"detail": "Zápas neexistuje."}, status=status.HTTP_404_NOT_FOUND)
+
+    if not user_is_admin_or_match_coach(request.user, match.category_id):
+        return Response({"detail": "Nemáš oprávnenie."}, status=status.HTTP_403_FORBIDDEN)
+
+    notify_match_reminder.delay(match_id, user_ids)
+    return Response({"detail": "Notifikácie budú odoslané."})
