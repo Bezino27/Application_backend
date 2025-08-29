@@ -232,8 +232,8 @@ def remind_unknown_players(training_id, user_ids):
             for token in tokens:
                 send_push_notification(
                     token,
-                    title="Nezabudni zahlasovať!",
-                    message=f"Stále si nepotvrdil účasť na tréningu {training.description} ({training.date.strftime('%d.%m.%Y')})!",
+                    title="Nezabudni hlasovať!",
+                    message=f"Stále si nepotvrdil účasť na udalosti {training.description} ({training.date.strftime('%d.%m.%Y')})!",
                     data={"type": "training", "training_id": training.id}
                 )
                 logger.info(f"Pripomenutie posl. hráčovi {user.username} → {token}")
