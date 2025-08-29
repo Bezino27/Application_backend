@@ -116,8 +116,12 @@ from django.utils.timezone import localtime
 def get_tokens(users):
     return ExpoPushToken.objects.filter(user__in=users).values_list("token", flat=True)
 
-@shared_task
-def notify_match_created(match_id):
+from celery import shared_task
+from django.utils.timezone import localtime
+from .models import Match, User
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=2)
+def notify_match_created(self, match_id):
     try:
         match = Match.objects.get(id=match_id)
         users = User.objects.filter(
@@ -133,12 +137,13 @@ def notify_match_created(match_id):
                 token,
                 title="Nový zápas",
                 message=f"Proti {match.opponent} – {date_str} – {match.location}",
-                data = {"type": "match", "match_id": match.id}
-
+                data={"type": "match", "match_id": match.id}
             )
+    except Match.DoesNotExist as e:
+        print(f"❌ Zápas {match_id} zatiaľ neexistuje, retry...")
+        raise self.retry(exc=e)
     except Exception as e:
         print(f"❌ notify_match_created: {e}")
-
 @shared_task
 def notify_match_updated(match_id):
     try:
