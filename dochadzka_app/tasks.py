@@ -254,9 +254,11 @@ def notify_match_reminder(match_id, user_ids):
                 send_push_notification(
                     token=token,
                     title="📢 Potvrď účasť na zápase",
-                    message=f"Zápas proti {match.opponent} – {match.date.strftime('%d.%m.%Y')}. Nezabudni odpovedať.",
-                    screen="match",
-                    match_id=match.id
+                    message=f"Zápas proti {match.opponent} – {match.date.strftime('%d.%m.%Y %H:%M')}. Nezabudni odpovedať.",
+                    data={
+                        "type": "match",
+                        "match_id": match.id
+                    }
                 )
                 logger.info(f"📨 Reminder na zápas poslaný hráčovi {user.username} → {token}")
     except Match.DoesNotExist:
