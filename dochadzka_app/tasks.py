@@ -132,7 +132,9 @@ def notify_match_created(match_id):
             send_push_notification(
                 token,
                 title="Nový zápas",
-                message=f"Proti {match.opponent} – {date_str} – {match.location}"
+                message=f"Proti {match.opponent} – {date_str} – {match.location}",
+                data = {"type": "match", "match_id": match.id}
+
             )
     except Exception as e:
         print(f"❌ notify_match_created: {e}")
@@ -155,7 +157,8 @@ def notify_match_updated(match_id):
             send_push_notification(
                 token,
                 title="Zmena v zápase!",
-                message=f"Boli zmenené údaje zápasu proti {match.opponent}, skontroluj ich!"
+                message=f"Boli zmenené údaje zápasu proti {match.opponent}, skontroluj ich!",
+                data = {"type": "match", "match_id": match.id}
             )
 
     except Exception as e:
@@ -195,7 +198,8 @@ def notify_nomination_changed(match_id, user_ids):
                 send_push_notification(
                     token,
                     title="Nominácia",
-                    message=message
+                    message=message,
+                    data = {"type": "match", "match_id": match.id}
                 )
     except Exception as e:
         print(f"❌ notify_nomination_changed: {e}")
@@ -211,7 +215,8 @@ def notify_nomination_removed(match_id, user_ids):
             send_push_notification(
                 token,
                 title="Zmena v nominácii",
-                message=f"Bol si odstránený z nominácie na zápas proti {match.opponent}."
+                message=f"Bol si odstránený z nominácie na zápas proti {match.opponent}.",
+                data = {"type": "match", "match_id": match.id}
             )
     except Exception as e:
         print(f"❌ notify_nomination_removed: {e}")
