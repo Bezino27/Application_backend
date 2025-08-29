@@ -976,7 +976,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 
 from .serializers import MatchSerializer,MatchDetailSerializer
-from .tasks import notify_match_created, notify_match_deleted,notify_match_updated,notify_nomination_changed
+from .tasks import notify_match_created, notify_match_deleted,notify_nomination_changed,notify_match_updated
 from django.db import transaction
 
 
@@ -1185,6 +1185,15 @@ from .models import Match, MatchNomination
 from .serializers import MatchNominationSerializer, MatchNominationUpdateSerializer
 from django.contrib.auth import get_user_model
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.contrib.auth import get_user_model
+from .models import Match, MatchNomination
+from .serializers import MatchNominationSerializer
+from .tasks import notify_nomination_changed
+from django.db import transaction
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def match_nominations_view(request, match_id):
@@ -1198,7 +1207,6 @@ def match_nominations_view(request, match_id):
     if request.method == "GET":
         nominations = MatchNomination.objects.filter(match=match)
 
-        # Všetci hráči s rolou 'player' v danej kategórii a klube
         all_players = User.objects.filter(
             roles__category=match.category,
             roles__role='player',
@@ -1208,7 +1216,6 @@ def match_nominations_view(request, match_id):
         nominated_user_ids = nominations.values_list("user_id", flat=True)
         nominated_serialized = MatchNominationSerializer(nominations, many=True).data
 
-        # Nenominovaní hráči (bez is_substitute!)
         non_nominated_players = all_players.exclude(id__in=nominated_user_ids)
         non_nominated_data = [
             {
@@ -1216,7 +1223,6 @@ def match_nominations_view(request, match_id):
                 "name": p.get_full_name() or p.username,
                 "number": p.number,
                 "birth_date": p.birth_date.strftime("%d.%m.%Y") if p.birth_date else None,
-                # NEPRIDÁVAJ is_substitute
             }
             for p in non_nominated_players
         ]
@@ -1230,21 +1236,39 @@ def match_nominations_view(request, match_id):
 
     elif request.method == "POST":
         data = request.data.get("nominations", [])
+        if not isinstance(data, list):
+            return Response({"error": "Očakáva sa zoznam nominácií."}, status=400)
+
         MatchNomination.objects.filter(match=match).delete()
 
+        new_nominations = []
+        starter_ids = []
+        sub_ids = []
+
         for item in data:
-            MatchNomination.objects.create(
+            user_id = item["user"]
+            is_sub = item.get("is_substitute", False)
+            new_nominations.append(MatchNomination(
                 match=match,
-                user_id=item["user"],
-                is_substitute=item.get("is_substitute", False),
-                rating=item.get("rating", None),
+                user_id=user_id,
+                is_substitute=is_sub,
+                rating=item.get("rating"),
                 goals=item.get("goals", 0),
                 plus_minus=item.get("plus_minus", 0),
-            )
-        user_ids = [item["user"] for item in data]
-        notify_nomination_changed.delay(match.id, user_ids)
-        return Response({"success": "Nominácia bola uložená"})
+            ))
 
+            if is_sub:
+                sub_ids.append(user_id)
+            else:
+                starter_ids.append(user_id)
+
+        with transaction.atomic():
+            MatchNomination.objects.bulk_create(new_nominations)
+
+        # 🔔 notifikácie hráčom
+        notify_nomination_changed.delay(match.id, starter_ids + sub_ids)
+
+        return Response({"success": "Nominácia bola uložená"})
 from django.utils import timezone
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -1364,7 +1388,7 @@ def match_delete_view(request,  match_id: int):
 
     if not user_is_admin_or_match_coach(request.user, match.category_id):
         return Response({"detail": "Nemáš oprávnenie zmazať tento zápas."}, status=403)
-
+    notify_match_deleted.delay(match.id, match.opponent)
     try:
         match.delete()
     except ProtectedError:
@@ -1958,7 +1982,16 @@ Tu je výpis:
     except Exception as e:
         return Response({"error": f"Chyba pri spracovaní AI odpovede: {str(e)}"}, status=500)
 
-@api_view(['GET', 'PUT', 'PATCH'])  # aj GET pre detail
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.db.models import Q
+from .models import Match
+from .serializers import MatchSerializer
+from .tasks import notify_match_updated
+
+
+@api_view(['GET', 'PUT', 'PATCH'])  # podporuje načítanie aj úpravu
 @permission_classes([IsAuthenticated])
 def update_match_view(request, match_id):
     try:
@@ -1970,7 +2003,7 @@ def update_match_view(request, match_id):
         serializer = MatchSerializer(match, context={"request": request})
         return Response(serializer.data)
 
-    # PUT / PATCH
+    # PATCH / PUT – úprava zápasu
     is_authorized = request.user.roles.filter(
         Q(role='coach', category=match.category) | Q(role='admin')
     ).exists()
@@ -1978,14 +2011,19 @@ def update_match_view(request, match_id):
     if not is_authorized:
         return Response({"error": "Nemáš oprávnenie upraviť tento zápas."}, status=403)
 
-    serializer = MatchSerializer(match, data=request.data, partial=True, context={"request": request})
+    serializer = MatchSerializer(
+        match,
+        data=request.data,
+        partial=True,
+        context={"request": request}
+    )
+
     if serializer.is_valid():
         serializer.save()
-
-        # 🔁 znovu naserializuj po uložení, aby fungoval .data
-        updated = MatchSerializer(match, context={"request": request})
-        serializer.save()
         notify_match_updated.delay(match.id)
+
+        # serializuj znova po uložení (kvôli napr. .data a context)
+        updated = MatchSerializer(match, context={"request": request})
         return Response(updated.data)
 
     return Response(serializer.errors, status=400)

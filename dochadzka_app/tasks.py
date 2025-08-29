@@ -127,11 +127,11 @@ def notify_match_created(match_id):
         ).distinct()
         tokens = get_tokens(users)
 
-        date_str = localtime(match.date).strftime("%d.%m.%Y %H:%M")
+        date_str = localtime(match.date).strftime("%d.%m.%Y")
         for token in tokens:
             send_push_notification(
                 token,
-                title="📅 Nový zápas",
+                title="Nový zápas",
                 message=f"Proti {match.opponent} – {date_str} – {match.location}"
             )
     except Exception as e:
@@ -147,11 +147,11 @@ def notify_match_updated(match_id):
         for token in tokens:
             send_push_notification(
                 token,
-                title="📝 Zápas aktualizovaný",
-                message=f"Zápas proti {match.opponent} bol upravený."
+                title="Nominácia upravená",
+                message=f"Nominácia na zápas proti {match.opponent} bola upravená. Skontroluj svoju účasť."
             )
     except Exception as e:
-        print(f"❌ notify_match_updated: {e}")
+        print(f"❌ notify_nomination_updated: {e}")
 
 @shared_task
 def notify_match_deleted(match_id, opponent):
@@ -162,24 +162,29 @@ def notify_match_deleted(match_id, opponent):
         for token in tokens:
             send_push_notification(
                 token,
-                title="❌ Zápas zrušený",
+                title="Zápas zrušený",
                 message=f"Zápas proti {opponent} bol zrušený."
             )
     except Exception as e:
         print(f"❌ notify_match_deleted: {e}")
 
+
 @shared_task
 def notify_nomination_changed(match_id, user_ids):
     try:
         match = Match.objects.get(id=match_id)
-        users = User.objects.filter(id__in=user_ids)
-        tokens = get_tokens(users)
+        nominations = MatchNomination.objects.filter(match=match, user__id__in=user_ids).select_related('user')
 
-        for token in tokens:
-            send_push_notification(
-                token,
-                title="📢 Nominácia",
-                message=f"Bol si nominovaný na zápas proti {match.opponent}."
-            )
+        for nomination in nominations:
+            token_list = get_tokens([nomination.user])
+            role = "v základe" if not nomination.is_substitute else "ako náhradník"
+            message = f"Bol si nominovaný na zápas proti {match.opponent} {role}."
+
+            for token in token_list:
+                send_push_notification(
+                    token,
+                    title="Nominácia",
+                    message=message
+                )
     except Exception as e:
         print(f"❌ notify_nomination_changed: {e}")
