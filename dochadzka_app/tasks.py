@@ -277,7 +277,7 @@ def notify_created_member_payment(user_id, amount, due_date):
             send_push_notification(
                 token=token,
                 title="Nová platba",
-                message=f"Bola ti vytvorená nová platba vo výške {amount} € so splatnosťou do {due_date}.",
+                message=f"Bola ti vytvorená nová platba vo výške {amount}€ so splatnosťou do {due_date}.",
                 data={"type": "payment"}
             )
             logger.info(f"Notifikácia o novej platbe → {user.username} ({token})")
@@ -293,7 +293,7 @@ def notify_payment_status(user_id, is_paid, amount=None, vs=None):
 
         if is_paid:
             title = "Platba prijatá"
-            message = f"Platba vo výške {amount} € s VS {vs} bola úspešne prijatá. Ďakujeme!"
+            message = f"Platba vo výške {amount}€ s VS {vs} bola úspešne prijatá. Ďakujeme!"
         else:
             title = "Platba chýba"
             message = "Tvoja platba zatiaľ nebola zaznamenaná. Skontroluj prosím svoje prevody."
