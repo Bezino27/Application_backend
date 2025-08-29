@@ -1953,3 +1953,26 @@ Tu je výpis:
 
     except Exception as e:
         return Response({"error": f"Chyba pri spracovaní AI odpovede: {str(e)}"}, status=500)
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def update_match_view(request, match_id):
+    try:
+        match = Match.objects.get(id=match_id)
+    except Match.DoesNotExist:
+        return Response({'error': 'Zápas neexistuje'}, status=404)
+
+    # Over oprávnenie – tréner alebo admin v kategórii
+    is_authorized = request.user.roles.filter(
+        Q(role='coach', category=match.category) | Q(role='admin')
+    ).exists()
+
+    if not is_authorized:
+        return Response({"error": "Nemáš oprávnenie upraviť tento zápas."}, status=403)
+
+    serializer = MatchSerializer(match, data=request.data, partial=True, context={"request": request})
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+
+    return Response(serializer.errors, status=400)
