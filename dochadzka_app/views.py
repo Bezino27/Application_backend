@@ -979,6 +979,7 @@ from .serializers import MatchSerializer,MatchDetailSerializer
 from .tasks import notify_match_created, notify_match_deleted,notify_match_updated,notify_nomination_changed
 from django.db import transaction
 
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_match_view(request):
@@ -1004,10 +1005,11 @@ def create_match_view(request):
 
                 serializer = MatchSerializer(data=match_data, context={"request": request})
                 serializer.is_valid(raise_exception=True)
-                serializer.save(club=club)
-                created_matches.append(serializer.data)
-                serializer.save(club=club)
-                notify_match_created.delay(serializer.instance.id)
+
+                match = serializer.save(club=club)  # ✅ ulož
+                created_matches.append(MatchSerializer(match, context={"request": request}).data)  # ✅ bezpečne získaš data
+
+                notify_match_created.delay(match.id)
 
         return Response(created_matches, status=201)
 
@@ -1015,8 +1017,6 @@ def create_match_view(request):
         import traceback
         traceback.print_exc()
         return Response({"error": str(e)}, status=500)
-
-
 
 from django.contrib.auth import get_user_model
 
