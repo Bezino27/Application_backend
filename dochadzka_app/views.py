@@ -120,6 +120,7 @@ User = get_user_model()
 @permission_classes([IsAuthenticated])
 def create_training_view(request):
     category_ids = request.data.get("category_ids")
+
     if not category_ids or not isinstance(category_ids, list):
         return Response({"error": "Musíš zadať aspoň jednu kategóriu."}, status=400)
 
@@ -168,23 +169,11 @@ from dochadzka_app.models import Training, Category
 from dochadzka_app.serializers import TrainingSerializer
 
 
-from django.core.cache import cache
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from dochadzka_app.models import Training, Category
-from dochadzka_app.serializers import TrainingSerializer
-from rest_framework.response import Response
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def player_trainings_view(request):
     user = request.user
     club = user.club
-
-    cache_key = f"player_trainings_{user.id}"
-    cached_data = cache.get(cache_key)
-    if cached_data:
-        return Response(cached_data)
 
     # Získaj kategórie, kde je hráč
     categories = Category.objects.filter(club=club, user_roles__user=user).distinct()
@@ -196,10 +185,7 @@ def player_trainings_view(request):
     ).select_related('category').prefetch_related('attendances').order_by('date')
 
     serializer = TrainingSerializer(trainings, many=True, context={'request': request})
-    data = serializer.data
-
-    cache.set(cache_key, data, timeout=300)  # cache na 5 minút
-    return Response(data)
+    return Response(serializer.data)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
