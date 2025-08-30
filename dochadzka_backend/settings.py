@@ -136,7 +136,22 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'dochadzka_backend.wsgi.application'
-
+if DEBUG:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+        'loggers': {
+            'django.db.backends': {
+                'level': 'DEBUG',
+                'handlers': ['console'],
+            },
+        },
+    }
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
