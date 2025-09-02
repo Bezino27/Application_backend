@@ -2027,3 +2027,28 @@ def remind_match_attendance_view(request):
 
     notify_match_reminder.delay(match_id, user_ids)
     return Response({"detail": "Notifikácie budú odoslané."})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_member_payments_summary(request):
+    if not request.user.club:
+        return Response({"error": "Používateľ nemá priradený klub."}, status=400)
+
+    club = request.user.club
+    users = User.objects.filter(club=club)
+
+    data = []
+    for user in users:
+        payments = MemberPayment.objects.filter(user=user)
+        all_paid = all(p.is_paid for p in payments)
+
+        data.append({
+            "id": user.id,
+            "name": f"{user.first_name} {user.last_name}".strip() or user.username,
+            "birth_date": user.birth_date,
+            "number": user.number,
+            "all_payments_paid": all_paid,
+        })
+
+    return Response(data)
