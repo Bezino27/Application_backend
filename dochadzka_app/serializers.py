@@ -461,6 +461,9 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["status", "created_at"]
 
+    def get_total_amount(self, obj):
+        return sum((it.unit_price or 0) * it.quantity for it in obj.items.all())
+
     def create(self, validated_data):
         items_data = validated_data.pop("items", [])
         order = Order.objects.create(**validated_data)
