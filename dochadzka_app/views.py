@@ -2214,29 +2214,36 @@ from rest_framework.response import Response
 from rest_framework import status as http_status
 from django.shortcuts import get_object_or_404
 
+from rest_framework import status as http_status
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])  # v produkcii nahraď vlastnou IsClubAdmin
 def club_orders_view(request, club_id: int):
     """
-    GET /api/club-orders/<club_id>/?status=new|processing|done|canceled
+    GET /api/club-orders/<club_id>/?status=Nová|Spracováva sa|Objednaná|Doručená|Zrušená
     """
+    # ✅ kontrola, či má user prístup do tohto klubu
+    if not request.user.is_superuser:
+        # ak máš user.club (napr. ForeignKey), tak:
+        if getattr(request.user, "club_id", None) != club_id:
+            return Response({"detail": "Forbidden"}, status=http_status.HTTP_403_FORBIDDEN)
+        # alebo ak máš custom pole s viacerými klubmi (napr. admin_club_ids):
+        # if club_id not in getattr(request.user, "admin_club_ids", []):
+        #     return Response({"detail": "Forbidden"}, status=http_status.HTTP_403_FORBIDDEN)
+
     qs = (
         Order.objects.filter(club_id=club_id)
         .select_related("user", "club")
         .prefetch_related("items")
         .order_by("-created_at")
     )
+
     status_param = request.query_params.get("status")
     if status_param:
         qs = qs.filter(status=status_param)
 
-    # (voliteľné) autorizácia na klub:
-    # if not request.user.is_superuser and club_id not in getattr(request.user, "admin_club_ids", []):
-    #     return Response({"detail": "Forbidden"}, status=http_status.HTTP_403_FORBIDDEN)
-
     ser = ClubOrderReadSerializer(qs, many=True)
     return Response(ser.data, status=http_status.HTTP_200_OK)
-
 
 # views.py
 from rest_framework.decorators import api_view, permission_classes

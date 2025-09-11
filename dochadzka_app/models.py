@@ -248,10 +248,11 @@ from django.conf import settings
 
 class Order(models.Model):
     class Status(models.TextChoices):
-        NEW = "new", "Nová"
-        PROCESSING = "processing", "Spracúva sa"
-        DONE = "done", "Vybavená"
-        CANCELED = "canceled", "Zrušená"
+        NEW = "Nová", "Nová"
+        PROCESSING = "Spracováva sa", "Spracováva sa"
+        ORDERED = "Objednaná", "Objednaná"
+        DONE = "Doručená", "Doručená"
+        CANCELED = "Zrušená", "Zrušená"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders")
     club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name="orders")
