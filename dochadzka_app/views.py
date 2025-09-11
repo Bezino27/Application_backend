@@ -1807,20 +1807,44 @@ def admin_member_payments(request):
         return Response(data)
 
     elif request.method == 'PUT':
-        payment_id = request.data.get("id")
-        is_paid = request.data.get("is_paid")
+        # 🔥 Ak príde zoznam
+        if isinstance(request.data, list):
+            updated = []
+            for item in request.data:
+                payment_id = item.get("id")
+                is_paid = item.get("is_paid")
 
-        if payment_id is None or is_paid is None:
-            return Response({"error": "Chýbajú údaje."}, status=400)
+                if payment_id is None or is_paid is None:
+                    continue
 
-        try:
-            payment = MemberPayment.objects.get(id=payment_id, club=request.user.club)
-            payment.is_paid = is_paid
-            payment.save()
-            notify_payment_status.delay(user_id=payment.user.id, is_paid=is_paid)
-            return Response({"success": True})
-        except MemberPayment.DoesNotExist:
-            return Response({"error": "Platba neexistuje."}, status=404)
+                try:
+                    payment = MemberPayment.objects.get(id=payment_id, club=request.user.club)
+                    payment.is_paid = is_paid
+                    payment.save()
+                    notify_payment_status.delay(user_id=payment.user.id, is_paid=is_paid)
+                    updated.append(payment_id)
+                except MemberPayment.DoesNotExist:
+                    continue
+
+            return Response({"success": True, "updated": updated})
+
+        # 🔥 Ak príde iba jeden objekt
+        else:
+            payment_id = request.data.get("id")
+            is_paid = request.data.get("is_paid")
+
+            if payment_id is None or is_paid is None:
+                return Response({"error": "Chýbajú údaje."}, status=400)
+
+            try:
+                payment = MemberPayment.objects.get(id=payment_id, club=request.user.club)
+                payment.is_paid = is_paid
+                payment.save()
+                notify_payment_status.delay(user_id=payment.user.id, is_paid=is_paid)
+                return Response({"success": True, "updated": [payment_id]})
+            except MemberPayment.DoesNotExist:
+                return Response({"error": "Platba neexistuje."}, status=404)
+
 
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAdminUser
