@@ -17,4 +17,5 @@ httpx==0.27.0
 celery
 redis
 pdfplumber
+qrplatba
 openai>=1.0.0
