@@ -16,7 +16,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     upload_pdf_statement_chatgpt,OrderCreateView, MyOrdersListView, order_update_view,
                     set_preferred_role, club_payment_settings_list, member_payments, create_member_payments,
                     update_member_payment, remind_attendance_view, remind_match_attendance_view,
-                    admin_member_payments_summary, new_members_without_payments)
+                    admin_member_payments_summary, new_members_without_payments,cancel_order_item_view)
 
 urlpatterns = [
     path('me/', me_view, name='me'),
@@ -85,7 +85,7 @@ urlpatterns = [
     path("my-orders/", MyOrdersListView.as_view(), name="my-orders"),
     path("club-orders/<int:club_id>/", club_orders_view, name="club-orders"),
     path("order/<int:order_id>/", order_update_view, name="order-update"),
-    path("order-items/<item_id>/cancel/", order_update_view, name="order-update"),
+    path("order-items/<item_id>/cancel/", cancel_order_item_view, name="cancel-order"),
 
 ]
 
