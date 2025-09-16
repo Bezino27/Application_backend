@@ -451,18 +451,39 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = [
-            "id",
-            "user",
-            "club",
-            "status",
-            "is_paid",
-            "note",
-            "created_at",
-            "total_amount",
-            "items",
+            "id", "user", "club", "status", "is_paid", "note", "created_at",
+            "total_amount", "items",
         ]
         read_only_fields = ["created_at", "user", "club"]
 
+    def update(self, instance, validated_data):
+        instance.status = validated_data.get("status", instance.status)
+        instance.is_paid = validated_data.get("is_paid", instance.is_paid)
+        instance.total_amount = validated_data.get("total_amount", instance.total_amount)
+        instance.save()
+        return instance
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True)
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    total_amount = serializers.SerializerMethodField()     # ← NOVÉ
+
+    class Meta:
+        model = Order
+        fields = [
+            "id", "user", "club", "status", "is_paid", "note", "created_at",
+            "total_amount", "items",
+        ]
+        read_only_fields = ["status", "created_at"]
+
+
+    def create(self, validated_data):
+        items_data = validated_data.pop("items", [])
+        order = Order.objects.create(**validated_data)
+        for item in items_data:
+            OrderItem.objects.create(order=order, **item)
+        return order
 
 
 
@@ -500,27 +521,10 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
         fields = ["status", "is_paid", "note", "total_amount"]
 
 class ClubOrderItemSerializer(serializers.ModelSerializer):
-    line_total = serializers.SerializerMethodField()  # ✅ pridaj sem
-
     class Meta:
         model = OrderItem
-        fields = [
-            "id",
-            "product_type",
-            "product_name",
-            "product_code",
-            "side",
-            "height",
-            "size",
-            "quantity",
-            "unit_price",
-            "note",
-            "is_canceled",
-            "line_total",   # ✅ aby sa posielalo do frontendu
-        ]
+        fields = "__all__"
 
-    def get_line_total(self, obj):
-        return (obj.unit_price or 0) * (obj.quantity or 0)
 class ClubOrderReadSerializer(serializers.ModelSerializer):
     items = ClubOrderItemSerializer(many=True)
     first_name = serializers.CharField(source="user.first_name", read_only=True)
