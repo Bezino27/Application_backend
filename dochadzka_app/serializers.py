@@ -448,7 +448,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         return (obj.unit_price or Decimal("0")) * obj.quantity
 
 class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True)
+    items = OrderItemSerializer(many=True, read_only=True)
     user = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
