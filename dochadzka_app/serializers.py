@@ -500,10 +500,27 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
         fields = ["status", "is_paid", "note", "total_amount"]
 
 class ClubOrderItemSerializer(serializers.ModelSerializer):
+    line_total = serializers.SerializerMethodField()  # ✅ pridaj sem
+
     class Meta:
         model = OrderItem
-        fields = "__all__"
+        fields = [
+            "id",
+            "product_type",
+            "product_name",
+            "product_code",
+            "side",
+            "height",
+            "size",
+            "quantity",
+            "unit_price",
+            "note",
+            "is_canceled",
+            "line_total",   # ✅ aby sa posielalo do frontendu
+        ]
 
+    def get_line_total(self, obj):
+        return (obj.unit_price or 0) * (obj.quantity or 0)
 class ClubOrderReadSerializer(serializers.ModelSerializer):
     items = ClubOrderItemSerializer(many=True)
     first_name = serializers.CharField(source="user.first_name", read_only=True)
