@@ -449,7 +449,6 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Order
@@ -457,9 +456,14 @@ class OrderSerializer(serializers.ModelSerializer):
             "id", "user", "club", "status", "is_paid", "note", "created_at",
             "total_amount", "items",
         ]
-        read_only_fields = ["status", "created_at"]
+        read_only_fields = ["created_at", "user", "club"]
 
-
+    def update(self, instance, validated_data):
+        instance.status = validated_data.get("status", instance.status)
+        instance.is_paid = validated_data.get("is_paid", instance.is_paid)
+        instance.total_amount = validated_data.get("total_amount", instance.total_amount)
+        instance.save()
+        return instance
 
 
 class OrderSerializer(serializers.ModelSerializer):
