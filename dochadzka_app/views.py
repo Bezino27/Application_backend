@@ -2320,7 +2320,6 @@ def all_payments(request):
 
     is_admin = user.roles.filter(role="admin").exists()
 
-    # členské platby
     if show_all and is_admin:
         member_payments = MemberPayment.objects.all()
         order_payments = OrderPayment.objects.all()
