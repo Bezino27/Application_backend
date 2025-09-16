@@ -18,3 +18,4 @@ celery
 redis
 pdfplumber
 openai>=1.0.0
+qrcode[pil]
