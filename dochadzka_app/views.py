@@ -2314,23 +2314,16 @@ def cancel_order_item_view(request, item_id: int):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def all_payments(request):
+def orders_payments(request):
     user = request.user
     show_all = request.query_params.get('all') == 'true'
 
-    is_admin = user.roles.filter(role="admin").exists()
+    is_admin = user.roles.filter(role="admin").exists()  # uprav podľa svojho modelu
 
     if show_all and is_admin:
-        member_payments = MemberPayment.objects.all()
-        order_payments = OrderPayment.objects.all()
+        payments = OrderPayment.objects.all()
     else:
-        member_payments = MemberPayment.objects.filter(user=user)
-        order_payments = OrderPayment.objects.filter(user=user)
+        payments = OrderPayment.objects.filter(user=user)
 
-    member_data = MemberPaymentSerializer(member_payments, many=True).data
-    order_data = OrderPaymentSerializer(order_payments, many=True).data
-
-    return Response({
-        "member_payments": member_data,
-        "order_payments": order_data
-    })
+    serializer = OrderPaymentSerializer(payments, many=True)
+    return Response(serializer.data)
