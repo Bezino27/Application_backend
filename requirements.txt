@@ -18,4 +18,5 @@ celery
 redis
 pdfplumber
 openai>=1.0.0
+py3-paysquare
 qrcode[pil]

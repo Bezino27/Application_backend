@@ -2330,57 +2330,46 @@ def orders_payments(request):
 
 
 import io
-import qrcode
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+import qrcode
+from paysquare import PayBySquare
 from .models import MemberPayment, OrderPayment
 
 
-def generate_spd_qr(iban, amount, vs, msg, due_date=None):
-    parts = [
-        "SPD*1.0",
-        f"ACC:{iban}",
-        f"AM:{float(amount):.2f}",
-        "CC:EUR",
-        f"X-VS:{vs}",
-        f"MSG:{msg}",
-    ]
-    if due_date:
-        parts.append(f"DT:{due_date.strftime('%Y%m%d')}")
-    return "*".join(parts)
-
-
 def payment_qr(request, payment_type, pk):
-    """
-    payment_type: 'member' alebo 'order'
-    pk: ID platby
-    """
     if payment_type == "member":
         payment = get_object_or_404(MemberPayment, pk=pk)
         iban = payment.club.iban
         vs = payment.variable_symbol
         amount = float(payment.amount)
-        message = payment.description or "Clensky prispevok"
-        due_date = payment.due_date
+        message = payment.description or "Clenský príspevok"
+        due_date = payment.due_date.strftime("%Y-%m-%d")
 
     elif payment_type == "order":
         payment = get_object_or_404(OrderPayment, pk=pk)
         iban = payment.iban
         vs = payment.variable_symbol
         amount = float(payment.amount)
-        message = f"Objednavka #{payment.order.id}"
-        due_date = None
+        message = f"Objednávka #{payment.order.id}"
+        due_date = payment.created_at.strftime("%Y-%m-%d")
 
     else:
         return HttpResponse("Neplatný typ platby", status=400)
 
-    # Vytvor SPayD string
-    spd_string = generate_spd_qr(iban, amount, vs, message, due_date)
+    # Vytvorenie PayBySquare kódu
+    pbs = PayBySquare(
+        account=iban,
+        amount=amount,
+        currency="EUR",
+        variable_symbol=vs,
+        message=message,
+        due_date=due_date,
+    )
 
-    # Generuj QR obrázok pomocou `qrcode`
-    qr_img = qrcode.make(spd_string)
+    qr = qrcode.make(pbs.get_code())  # pbs.get_code() vráti správne dáta
     buffer = io.BytesIO()
-    qr_img.save(buffer, format="PNG")
+    qr.save(buffer, format="PNG")
     buffer.seek(0)
 
     return HttpResponse(buffer, content_type="image/png")
