@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Club, Category, UserCategoryRole, Training
+from .models import User, Club, Category, UserCategoryRole, Training, OrderPayment
 from django.utils.timezone import localtime
 
 class ClubSerializer(serializers.ModelSerializer):
@@ -459,7 +459,7 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["status", "created_at"]
 
-        
+
 from rest_framework import serializers
 from decimal import Decimal
 from .models import Order, OrderItem
@@ -514,3 +514,9 @@ class ClubOrderReadSerializer(serializers.ModelSerializer):
         model = Order
         fields = "__all__"
 
+
+# serializers.py
+class OrderPaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderPayment
+        fields = ["id", "order", "user", "iban", "variable_symbol", "amount", "is_paid", "created_at", "paid_at"]

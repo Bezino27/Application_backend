@@ -2276,8 +2276,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status as http_status
 from django.shortcuts import get_object_or_404
-from .models import OrderItem
-from .serializers import OrderItemSerializer, OrderUpdateSerializer
+from .models import OrderItem, OrderPayment
+from .serializers import OrderItemSerializer, OrderUpdateSerializer, OrderPaymentSerializer
 
 
 @api_view(["POST"])
@@ -2310,3 +2310,28 @@ def cancel_order_item_view(request, item_id: int):
         "item": serialized_item.data,
         "order_total": str(item.order.total_amount),
     }, status=http_status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def all_payments(request):
+    user = request.user
+    show_all = request.query_params.get('all') == 'true'
+
+    is_admin = user.roles.filter(role="admin").exists()
+
+    # členské platby
+    if show_all and is_admin:
+        member_payments = MemberPayment.objects.all()
+        order_payments = OrderPayment.objects.all()
+    else:
+        member_payments = MemberPayment.objects.filter(user=user)
+        order_payments = OrderPayment.objects.filter(user=user)
+
+    member_data = MemberPaymentSerializer(member_payments, many=True).data
+    order_data = OrderPaymentSerializer(order_payments, many=True).data
+
+    return Response({
+        "member_payments": member_data,
+        "order_payments": order_data
+    })

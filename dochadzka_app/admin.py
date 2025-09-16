@@ -11,7 +11,7 @@ from .models import (
     TrainingAttendance,
     Match,
     MatchParticipation,
-    Announcement, ExpoPushToken, Message, MessageReaction, MatchNomination, ClubPaymentSettings, MemberPayment,
+    Announcement, ExpoPushToken, Message, MessageReaction, MatchNomination, ClubPaymentSettings, MemberPayment,OrderPayment
 )
 
 
@@ -141,7 +141,9 @@ class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
 
 
-
+@admin.register(OrderPayment)
+class orderPayment(admin.ModelAdmin):
+    list_display = ('order', 'user', 'iban', 'variable_symbol', 'amount', 'is_paid', 'created_at', 'paid_at')
 
 from django.contrib import admin
 from .models import Position, User
