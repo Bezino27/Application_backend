@@ -434,7 +434,6 @@ from decimal import Decimal
 from .models import Order, OrderItem
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    line_total = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
