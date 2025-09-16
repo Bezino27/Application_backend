@@ -2271,20 +2271,42 @@ def order_update_view(request, order_id: int):
     return Response(serializer.errors, status=400)
 
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status as http_status
+from django.shortcuts import get_object_or_404
+from .models import OrderItem
+from .serializers import OrderItemSerializer, OrderUpdateSerializer
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def cancel_order_item_view(request, item_id: int):
     item = get_object_or_404(OrderItem, pk=item_id)
 
-    # kontrola vlastníctva – užívateľ môže rušiť len svoje objednávky
     if item.order.user != request.user and not request.user.is_superuser:
         return Response({"detail": "Forbidden"}, status=http_status.HTTP_403_FORBIDDEN)
 
     if item.is_canceled:
-        return Response({"detail": "Položka už bola zrušená"}, status=400)
+        return Response({"detail": "Položka už bola zrušená"}, status=http_status.HTTP_400_BAD_REQUEST)
 
     item.is_canceled = True
     item.save()
-    item.order.recalc_total()
 
-    return Response({"detail": "Položka bola zrušená", "order_total": item.order.total_amount})
+    print("==> Item po zrušení:", item.id, item.is_canceled, item.unit_price, item.quantity)
+
+    try:
+        serialized_item = OrderItemSerializer(item)
+        print("==> Serializer OK:", serialized_item.data)
+    except Exception as e:
+        import traceback
+        print("==> Serializer ERROR:", str(e))
+        traceback.print_exc()
+        return Response({"detail": f"Serializer error: {str(e)}"}, status=500)
+
+    return Response({
+        "detail": "Položka bola zrušená",
+        "item": serialized_item.data,
+        "order_total": str(item.order.total_amount),
+    }, status=http_status.HTTP_200_OK)
