@@ -2333,9 +2333,8 @@ import io
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 import qrcode
-from paysquare import PayBySquare
+from pay_by_square import generate  # funkcia z balíka
 from .models import MemberPayment, OrderPayment
-
 
 def payment_qr(request, payment_type, pk):
     if payment_type == "member":
@@ -2344,7 +2343,7 @@ def payment_qr(request, payment_type, pk):
         vs = payment.variable_symbol
         amount = float(payment.amount)
         message = payment.description or "Clenský príspevok"
-        due_date = payment.due_date.strftime("%Y-%m-%d")
+        date = payment.due_date  # ak máš date field, inak None
 
     elif payment_type == "order":
         payment = get_object_or_404(OrderPayment, pk=pk)
@@ -2352,24 +2351,25 @@ def payment_qr(request, payment_type, pk):
         vs = payment.variable_symbol
         amount = float(payment.amount)
         message = f"Objednávka #{payment.order.id}"
-        due_date = payment.created_at.strftime("%Y-%m-%d")
+        date = None
 
     else:
         return HttpResponse("Neplatný typ platby", status=400)
 
-    # Vytvorenie PayBySquare kódu
-    pbs = PayBySquare(
-        account=iban,
+    # generuje PAY by square reťazec
+    code_string = generate(
         amount=amount,
-        currency="EUR",
+        iban=iban,
         variable_symbol=vs,
-        message=message,
-        due_date=due_date,
+        note=message,
+        date=date,
+        currency="EUR"
     )
 
-    qr = qrcode.make(pbs.get_code())  # pbs.get_code() vráti správne dáta
+    # vytvor QR obrázok z toho stringu
+    qr_img = qrcode.make(code_string)
     buffer = io.BytesIO()
-    qr.save(buffer, format="PNG")
+    qr_img.save(buffer, format="PNG")
     buffer.seek(0)
 
     return HttpResponse(buffer, content_type="image/png")
