@@ -85,6 +85,7 @@ urlpatterns = [
     path("my-orders/", MyOrdersListView.as_view(), name="my-orders"),
     path("club-orders/<int:club_id>/", club_orders_view, name="club-orders"),
     path("order/<int:order_id>/", order_update_view, name="order-update"),
+    path("order-items/<item_id>/cancel/", order_update_view, name="order-update"),
 
 ]
 

@@ -2251,7 +2251,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status as http_status
 from django.shortcuts import get_object_or_404
-from .models import Order
+from .models import Order,OrderItem
 from .serializers import OrderUpdateSerializer
 
 @api_view(["PUT"])
@@ -2269,3 +2269,22 @@ def order_update_view(request, order_id: int):
         serializer.save()
         return Response(serializer.data, status=200)
     return Response(serializer.errors, status=400)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def cancel_order_item_view(request, item_id: int):
+    item = get_object_or_404(OrderItem, pk=item_id)
+
+    # kontrola vlastníctva – užívateľ môže rušiť len svoje objednávky
+    if item.order.user != request.user and not request.user.is_superuser:
+        return Response({"detail": "Forbidden"}, status=http_status.HTTP_403_FORBIDDEN)
+
+    if item.is_canceled:
+        return Response({"detail": "Položka už bola zrušená"}, status=400)
+
+    item.is_canceled = True
+    item.save()
+    item.order.recalc_total()
+
+    return Response({"detail": "Položka bola zrušená", "order_total": item.order.total_amount})
