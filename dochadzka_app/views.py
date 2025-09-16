@@ -2294,7 +2294,6 @@ def cancel_order_item_view(request, item_id: int):
     item.is_canceled = True
     item.save()
 
-    print("==> Item po zrušení:", item.id, item.is_canceled, item.unit_price, item.quantity)
 
     try:
         serialized_item = OrderItemSerializer(item)
