@@ -2373,3 +2373,42 @@ def payment_qr(request, payment_type, pk):
     buffer.seek(0)
 
     return HttpResponse(buffer, content_type="image/png")
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Order, OrderPayment
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_order_payment(request, order_id):
+    """
+    Vytvorí OrderPayment pre objednávku
+    """
+    user = request.user
+    data = request.data
+
+    order = get_object_or_404(Order, id=order_id)
+
+    # ak už existuje, neduplikovať
+    if hasattr(order, "payment"):
+        return Response({"detail": "Platba už existuje"}, status=status.HTTP_400_BAD_REQUEST)
+
+    payment = OrderPayment.objects.create(
+        order=order,
+        user=user,
+        iban=data.get("iban"),
+        variable_symbol=data.get("variable_symbol"),
+        amount=data.get("amount"),
+        is_paid=False,
+    )
+    return Response({
+        "id": payment.id,
+        "order": payment.order.id,
+        "iban": payment.iban,
+        "variable_symbol": payment.variable_symbol,
+        "amount": str(payment.amount),
+        "is_paid": payment.is_paid,
+    }, status=status.HTTP_201_CREATED)
