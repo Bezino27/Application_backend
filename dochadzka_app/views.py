@@ -2327,3 +2327,50 @@ def orders_payments(request):
 
     serializer = OrderPaymentSerializer(payments, many=True)
     return Response(serializer.data)
+
+
+import io
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from qrplatba import QRPlatba
+from .models import MemberPayment, OrderPayment
+
+
+def payment_qr(request, payment_type, pk):
+    """
+    payment_type: 'member' alebo 'order'
+    pk: ID platby
+    """
+
+    if payment_type == "member":
+        payment = get_object_or_404(MemberPayment, pk=pk)
+        iban = payment.club.iban  # IBAN berieme z klubu
+        vs = payment.variable_symbol
+        amount = float(payment.amount)
+        message = payment.description or "Clensky prispevok"
+
+    elif payment_type == "order":
+        payment = get_object_or_404(OrderPayment, pk=pk)
+        iban = payment.iban  # IBAN špecifický pre objednávky
+        vs = payment.variable_symbol
+        amount = float(payment.amount)
+        message = f"Objednavka #{payment.order.id}"
+
+    else:
+        return HttpResponse("Neplatný typ platby", status=400)
+
+    # Vytvorenie Pay by square
+    qr = QRPlatba(
+        iban=iban,
+        amount=amount,
+        vs=vs,
+        message=message,
+        currency="EUR",
+    )
+
+    img = qr.to_image()  # PIL image
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+
+    return HttpResponse(buffer, content_type="image/png")
