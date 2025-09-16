@@ -2330,10 +2330,24 @@ def orders_payments(request):
 
 
 import io
+import qrcode
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from qrplatba import QRPlatba
 from .models import MemberPayment, OrderPayment
+
+
+def generate_spd_qr(iban, amount, vs, msg, due_date=None):
+    parts = [
+        "SPD*1.0",
+        f"ACC:{iban}",
+        f"AM:{float(amount):.2f}",
+        "CC:EUR",
+        f"X-VS:{vs}",
+        f"MSG:{msg}",
+    ]
+    if due_date:
+        parts.append(f"DT:{due_date.strftime('%Y%m%d')}")
+    return "*".join(parts)
 
 
 def payment_qr(request, payment_type, pk):
@@ -2341,36 +2355,32 @@ def payment_qr(request, payment_type, pk):
     payment_type: 'member' alebo 'order'
     pk: ID platby
     """
-
     if payment_type == "member":
         payment = get_object_or_404(MemberPayment, pk=pk)
-        iban = payment.club.iban  # IBAN berieme z klubu
+        iban = payment.club.iban
         vs = payment.variable_symbol
         amount = float(payment.amount)
         message = payment.description or "Clensky prispevok"
+        due_date = payment.due_date
 
     elif payment_type == "order":
         payment = get_object_or_404(OrderPayment, pk=pk)
-        iban = payment.iban  # IBAN špecifický pre objednávky
+        iban = payment.iban
         vs = payment.variable_symbol
         amount = float(payment.amount)
         message = f"Objednavka #{payment.order.id}"
+        due_date = None
 
     else:
         return HttpResponse("Neplatný typ platby", status=400)
 
-    # Vytvorenie Pay by square
-    qr = QRPlatba(
-        iban=iban,
-        amount=amount,
-        vs=vs,
-        message=message,
-        currency="EUR",
-    )
+    # Vytvor SPayD string
+    spd_string = generate_spd_qr(iban, amount, vs, message, due_date)
 
-    img = qr.to_image()  # PIL image
+    # Generuj QR obrázok pomocou `qrcode`
+    qr_img = qrcode.make(spd_string)
     buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
+    qr_img.save(buffer, format="PNG")
     buffer.seek(0)
 
     return HttpResponse(buffer, content_type="image/png")
