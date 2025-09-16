@@ -444,11 +444,9 @@ class OrderItemSerializer(serializers.ModelSerializer):
         fields = [
             "id", "product_type", "product_name", "product_code",
             "side", "height", "size", "quantity", "note",
-            "unit_price", "line_total", "is_canceled",
+            "line_total", "is_canceled",
         ]
 
-    def get_line_total(self, obj):
-        return (obj.unit_price or 0) * (obj.quantity or 0)
 
 
 class OrderSerializer(serializers.ModelSerializer):
