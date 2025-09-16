@@ -262,13 +262,7 @@ class Order(models.Model):
     is_paid = models.BooleanField(default=False)  # ← NOVÉ
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # ✅ PRIDAJ TOTO
 
-    def recalc_total(self):
-        total = sum(
-            (item.unit_price or 0) * item.quantity
-            for item in self.items.filter(is_canceled=False)
-        )
-        self.total_amount = total
-        self.save(update_fields=["total_amount"])
+    
 
     def __str__(self):
         return f"Order #{self.pk} by {self.user} ({self.created_at:%Y-%m-%d})"
