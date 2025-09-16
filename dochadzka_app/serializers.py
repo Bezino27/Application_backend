@@ -433,15 +433,22 @@ from rest_framework import serializers
 from decimal import Decimal
 from .models import Order, OrderItem
 
+from rest_framework import serializers
+from .models import Order, OrderItem
+
 class OrderItemSerializer(serializers.ModelSerializer):
+    line_total = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
         fields = [
             "id", "product_type", "product_name", "product_code",
             "side", "height", "size", "quantity", "note",
-            "line_total","is_canceled"
+            "unit_price", "line_total", "is_canceled",
         ]
+
+    def get_line_total(self, obj):
+        return (obj.unit_price or 0) * (obj.quantity or 0)
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -458,32 +465,10 @@ class OrderSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         instance.status = validated_data.get("status", instance.status)
         instance.is_paid = validated_data.get("is_paid", instance.is_paid)
+        instance.note = validated_data.get("note", instance.note)
         instance.total_amount = validated_data.get("total_amount", instance.total_amount)
         instance.save()
         return instance
-
-
-class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True)
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
-    total_amount = serializers.SerializerMethodField()     # ← NOVÉ
-
-    class Meta:
-        model = Order
-        fields = [
-            "id", "user", "club", "status", "is_paid", "note", "created_at",
-            "total_amount", "items",
-        ]
-        read_only_fields = ["status", "created_at"]
-
-
-    def create(self, validated_data):
-        items_data = validated_data.pop("items", [])
-        order = Order.objects.create(**validated_data)
-        for item in items_data:
-            OrderItem.objects.create(order=order, **item)
-        return order
-
 
 
 
