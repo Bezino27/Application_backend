@@ -17,5 +17,5 @@ httpx==0.27.0
 celery
 redis
 pdfplumber
-qrplatba2
+git+https://github.com/mirekmatejka/qrplatba2.git#egg=qrplatba
 openai>=1.0.0
