@@ -462,31 +462,6 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 
-class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True)
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
-    total_amount = serializers.SerializerMethodField()     # ← NOVÉ
-
-    class Meta:
-        model = Order
-        fields = [
-            "id", "user", "club", "status", "is_paid", "note", "created_at",
-            "total_amount", "items",
-        ]
-        read_only_fields = ["status", "created_at"]
-
-    def get_total_amount(self, obj):
-        return sum((it.unit_price or 0) * it.quantity for it in obj.items.all())
-
-    def create(self, validated_data):
-        items_data = validated_data.pop("items", [])
-        order = Order.objects.create(**validated_data)
-        for item in items_data:
-            OrderItem.objects.create(order=order, **item)
-        return order
-
-
-
 
 from rest_framework import serializers
 from decimal import Decimal
