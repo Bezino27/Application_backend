@@ -440,12 +440,10 @@ class OrderItemSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = [
             "id", "product_type", "product_name", "product_code",
-            "side", "height", "size", "quantity", "unit_price", "note",
+            "side", "height", "size", "quantity", "note",
             "line_total","is_canceled"
         ]
 
-    def get_line_total(self, obj):
-        return (obj.unit_price or Decimal("0")) * obj.quantity
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
@@ -479,8 +477,6 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["status", "created_at"]
 
-    def get_total_amount(self, obj):
-        return sum((it.unit_price or 0) * it.quantity for it in obj.items.all())
 
     def create(self, validated_data):
         items_data = validated_data.pop("items", [])
@@ -503,20 +499,15 @@ class ClubOrderItemReadSerializer(serializers.ModelSerializer):
         model = OrderItem
         fields = [
             "id", "product_type", "product_name", "product_code",
-            "side", "height", "size", "quantity", "unit_price", "note",
+            "side", "height", "size", "quantity", "note",
             "line_total",
         ]
-
-    def get_line_total(self, obj):
-        unit = obj.unit_price or Decimal("0")
-        return unit * (obj.quantity or 0)
 
 
 
 # UPDATE (pre PATCH)
 class ClubOrderItemUpdateSerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    unit_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
     quantity = serializers.IntegerField(min_value=1, required=False)
     note = serializers.CharField(required=False, allow_blank=True, allow_null=True)
 
