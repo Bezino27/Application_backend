@@ -434,10 +434,18 @@ from decimal import Decimal
 from .models import Order, OrderItem
 
 class OrderItemSerializer(serializers.ModelSerializer):
+    line_total = serializers.SerializerMethodField()
+
     class Meta:
         model = OrderItem
-        fields = "__all__"  # alebo pridaj len ['id', 'product_name', ..., 'is_canceled']
+        fields = [
+            "id", "product_type", "product_name", "product_code",
+            "side", "height", "size", "quantity", "unit_price", "note",
+            "line_total","is_canceled"
+        ]
 
+    def get_line_total(self, obj):
+        return (obj.unit_price or Decimal("0")) * obj.quantity
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -519,3 +527,7 @@ class ClubOrderReadSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = "__all__"  # alebo pridaj len ['id', 'product_name', ..., 'is_canceled']
