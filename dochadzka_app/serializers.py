@@ -447,6 +447,17 @@ class OrderItemSerializer(serializers.ModelSerializer):
     def get_line_total(self, obj):
         return (obj.unit_price or Decimal("0")) * obj.quantity
 
+class OrderSerializer2(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = Order
+        fields = [
+            "id", "user", "club", "status", "is_paid", "note", "created_at",
+            "total_amount", "items",
+        ]
+        read_only_fields = ["status", "created_at"]
 
 
 

@@ -2187,7 +2187,7 @@ def new_members_without_payments(request):
 from rest_framework import permissions, status, generics
 from rest_framework.response import Response
 from .models import Order
-from .serializers import OrderSerializer
+from .serializers import OrderSerializer, OrderSerializer2
 
 class OrderCreateView(generics.CreateAPIView):
     serializer_class = OrderSerializer
@@ -2199,7 +2199,7 @@ class OrderCreateView(generics.CreateAPIView):
         serializer.save(user=user)
 
 class MyOrdersListView(generics.ListAPIView):
-    serializer_class = OrderSerializer
+    serializer_class = OrderSerializer2
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
