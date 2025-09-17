@@ -37,7 +37,7 @@ class UserMeSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'first_name', 'last_name', 'email', 'club',
                   'roles', 'categories', 'email_2', 'birth_date', 'number',
-                  'height', 'weight', 'side', 'is_new', 'position']
+                  'height', 'weight', 'side', 'is_new', 'position', 'iban']
 
     def get_roles(self, obj):
         roles = UserCategoryRole.objects.filter(user=obj)
@@ -60,7 +60,7 @@ class UserMeUpdateSerializer(serializers.ModelSerializer):
             'username',
             'email', 'email_2',
             'birth_date', 'number',
-            'height', 'weight', 'side','position'
+            'height', 'weight', 'side','position', 'iban'
         ]
 
 

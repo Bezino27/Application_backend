@@ -2380,34 +2380,25 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Order, OrderPayment
 
+# views.py
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def create_order_payment(request, order_id):
-    """
-    Vytvorí OrderPayment pre objednávku
-    """
+def generate_payment(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id)
+    except Order.DoesNotExist:
+        return Response({"error": "Objednávka neexistuje"}, status=404)
+
+    # IBAN zo spravujúceho používateľa
     user = request.user
-    data = request.data
+    iban = user.iban if hasattr(user, "iban") else None
+    if not iban:
+        return Response({"error": "Nastav si IBAN v profile"}, status=400)
 
-    order = get_object_or_404(Order, id=order_id)
-
-    # ak už existuje, neduplikovať
-    if hasattr(order, "payment"):
-        return Response({"detail": "Platba už existuje"}, status=status.HTTP_400_BAD_REQUEST)
-
-    payment = OrderPayment.objects.create(
-        order=order,
-        user=user,
-        iban=data.get("iban"),
-        variable_symbol=data.get("variable_symbol"),
-        amount=data.get("amount"),
-        is_paid=False,
-    )
-    return Response({
-        "id": payment.id,
-        "order": payment.order.id,
-        "iban": payment.iban,
-        "variable_symbol": payment.variable_symbol,
-        "amount": str(payment.amount),
-        "is_paid": payment.is_paid,
-    }, status=status.HTTP_201_CREATED)
+    payment_data = {
+        "vs": str(order.id),
+        "iban": iban,
+        "amount": order.total_amount,
+        "full_name": order.full_name,
+    }
+    return Response(payment_data)

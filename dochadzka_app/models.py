@@ -38,6 +38,8 @@ class User(AbstractUser):
     email_2 = models.EmailField(null=True, blank=True)    # druhý email
     position = models.ForeignKey('Position', on_delete=models.SET_NULL, null=True, blank=True)
     preferred_role = models.CharField(max_length=20, null=True, blank=True, choices=Role.choices)
+    iban = models.CharField(max_length=34, blank=True, null=True, help_text="IBAN používateľa")
+
     def __str__(self):
         return self.username
 

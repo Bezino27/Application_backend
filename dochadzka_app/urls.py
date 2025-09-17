@@ -15,7 +15,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     match_participation_view, club_payment_settings_detail,club_orders_view,
                     upload_pdf_statement_chatgpt,OrderCreateView, MyOrdersListView, order_update_view,
                     set_preferred_role, club_payment_settings_list, member_payments, create_member_payments, payment_qr,
-                    update_member_payment, remind_attendance_view, remind_match_attendance_view, orders_payments,create_order_payment,
+                    update_member_payment, remind_attendance_view, remind_match_attendance_view, orders_payments,generate_payment,
                     admin_member_payments_summary, new_members_without_payments,cancel_order_item_view)
 
 urlpatterns = [
@@ -88,7 +88,7 @@ urlpatterns = [
     path("order-items/<int:item_id>/cancel/", cancel_order_item_view, name="cancel-order"),
     path('orders-payments/', orders_payments),
     path("payment-qr/<str:payment_type>/<int:pk>/", payment_qr, name="payment_qr"),
-    path("orders/<int:order_id>/create-payment/", create_order_payment),
+    path("order/<int:order_id>/generate-payment/", generate_payment),
 
 
 
