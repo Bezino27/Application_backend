@@ -520,10 +520,62 @@ class ClubOrderItemUpdateSerializer(serializers.Serializer):
 from rest_framework import serializers
 from .models import Order
 
+from decimal import Decimal
+from django.utils import timezone
+from rest_framework import serializers
+from .models import Order, OrderPayment
+
 class OrderUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ["status", "is_paid", "note", "total_amount"]
+
+    def update(self, instance, validated_data):
+        amount_changed = "total_amount" in validated_data
+        paid_changed = "is_paid" in validated_data
+
+        # Najprv ulož objednávku
+        instance = super().update(instance, validated_data)
+
+        payment = getattr(instance, "payment", None)
+
+        # Ak sa zmenila suma a platba existuje, udrž ju v synchre (aj keď ešte nie je zaplatená)
+        if amount_changed and payment:
+            payment.amount = instance.total_amount
+            payment.save(update_fields=["amount"])
+
+        # Ak sa zmenil is_paid, zosynchronizuj OrderPayment
+        if paid_changed:
+            if payment:
+                payment.is_paid = instance.is_paid
+                payment.paid_at = timezone.now() if instance.is_paid else None
+                # pre istotu zosúladíme aj ďalšie polia
+                if getattr(instance.user, "iban", None):
+                    payment.iban = instance.user.iban
+                payment.amount = instance.total_amount
+                payment.variable_symbol = str(instance.id)
+                payment.save()
+            else:
+                # platba ešte neexistuje – vytvor ju len ak je objednávka označená ako zaplatená
+                if instance.is_paid:
+                    iban = getattr(instance.user, "iban", None)
+                    if not iban:
+                        # Bez IBANu nebudeme vytvárať "zaplatenú" platbu
+                        raise serializers.ValidationError({
+                            "is_paid": "Používateľ nemá nastavený IBAN v profile – najprv ho ulož v profile."
+                        })
+                    OrderPayment.objects.create(
+                        order=instance,
+                        user=instance.user,
+                        iban=iban,
+                        variable_symbol=str(instance.id),
+                        amount=instance.total_amount or Decimal("0.00"),
+                        is_paid=True,
+                        paid_at=timezone.now(),
+                    )
+
+        return instance
+
 
 class ClubOrderItemSerializer(serializers.ModelSerializer):
     class Meta:

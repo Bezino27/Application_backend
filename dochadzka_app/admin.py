@@ -27,17 +27,17 @@ class UserCategoryRoleInline(admin.TabularInline):
 class UserAdmin(BaseUserAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
         (('Doplňujúce údaje'), {'fields': ('club','email_2', 'position',
-                  'birth_date', 'number','height', 'weight', 'side','preferred_role')}),
+                  'birth_date', 'number','height', 'weight', 'side','preferred_role', 'iban')}),
     )
 
     add_fieldsets = BaseUserAdmin.add_fieldsets + (
         (('Doplňujúce údaje'), {'fields': ('club','email_2', 'position',
-                  'birth_date', 'number','height', 'weight', 'side', 'expo_push_token','preferred_role')}),
+                  'birth_date', 'number','height', 'weight', 'side', 'expo_push_token','preferred_role', 'iban')}),
     )
 
     list_display = ('id', 'username', 'first_name', 'position', 'email', 'club', 'email_2',
-                  'birth_date', 'number','height', 'weight', 'side', 'is_staff','preferred_role')
-    list_filter = ('is_staff', 'is_superuser', 'is_active', 'club','preferred_role')
+                  'birth_date', 'number','height', 'weight', 'side', 'is_staff','preferred_role', 'iban')
+    list_filter = ('is_staff', 'is_superuser', 'is_active', 'club','preferred_role', 'iban')
 
     inlines = [UserCategoryRoleInline]
 

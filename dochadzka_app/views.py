@@ -2257,19 +2257,37 @@ from .serializers import OrderUpdateSerializer
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
 def order_update_view(request, order_id: int):
-    print("==> PUT data:", request.data)
-
     order = get_object_or_404(Order, pk=order_id)
-
     serializer = OrderUpdateSerializer(order, data=request.data, partial=True)
-    print("==> Serializer valid?", serializer.is_valid())
-    print("==> Errors:", serializer.errors)
 
     if serializer.is_valid():
-        serializer.save()
+        order = serializer.save()
+
+        # 🔥 Synchronizácia Order ↔ OrderPayment
+        if "is_paid" in request.data:
+            if hasattr(order, "payment"):  # ak má už vytvorenú platbu
+                order.payment.is_paid = order.is_paid
+                if order.is_paid:
+                    from django.utils.timezone import now
+                    order.payment.paid_at = now()
+                else:
+                    order.payment.paid_at = None
+                order.payment.save()
+            else:
+                # ak ešte nemá platbu, ale označíš ako zaplatenú
+                from .models import OrderPayment
+                OrderPayment.objects.create(
+                    order=order,
+                    user=order.user,
+                    iban=order.user.iban,
+                    variable_symbol=str(order.id),
+                    amount=order.total_amount,
+                    is_paid=True,
+                    paid_at=now(),
+                )
+
         return Response(serializer.data, status=200)
     return Response(serializer.errors, status=400)
-
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -2317,16 +2335,16 @@ def orders_payments(request):
     user = request.user
     show_all = request.query_params.get('all') == 'true'
 
-    is_admin = user.roles.filter(role="admin").exists()  # uprav podľa svojho modelu
+    is_admin = user.roles.filter(role="admin").exists()  # alebo podľa tvojho modelu
 
     if show_all and is_admin:
         payments = OrderPayment.objects.all()
     else:
-        payments = OrderPayment.objects.filter(user=user)
+        # vráť len tie platby, kde objednávku vytvoril prihlásený user
+        payments = OrderPayment.objects.filter(order__user=user)
 
     serializer = OrderPaymentSerializer(payments, many=True)
     return Response(serializer.data)
-
 
 import io
 from django.http import HttpResponse
@@ -2380,7 +2398,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import Order, OrderPayment
 
-# views.py
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def generate_payment(request, order_id):
@@ -2389,16 +2406,31 @@ def generate_payment(request, order_id):
     except Order.DoesNotExist:
         return Response({"error": "Objednávka neexistuje"}, status=404)
 
-    # IBAN zo spravujúceho používateľa
     user = request.user
-    iban = user.iban if hasattr(user, "iban") else None
-    if not iban:
-        return Response({"error": "Nastav si IBAN v profile"}, status=400)
+    if not user.iban:
+        return Response({"error": "Nemáš nastavený IBAN v profile"}, status=400)
 
-    payment_data = {
-        "vs": str(order.id),
-        "iban": iban,
-        "amount": order.total_amount,
-        "full_name": order.full_name,
-    }
-    return Response(payment_data)
+    # ak už existuje, nech sa použije
+    payment, created = OrderPayment.objects.get_or_create(
+        order=order,
+        defaults={
+            "user": user,
+            "iban": user.iban,
+            "variable_symbol": str(order.id),
+            "amount": order.total_amount,
+        },
+    )
+
+    # ak existuje ale zmenila sa suma alebo IBAN, update
+    if not created:
+        payment.iban = user.iban
+        payment.amount = order.total_amount
+        payment.variable_symbol = str(order.id)
+        payment.save()
+
+    return Response({
+        "vs": payment.variable_symbol,
+        "iban": payment.iban,
+        "amount": str(payment.amount),
+        "is_paid": payment.is_paid,
+    })
