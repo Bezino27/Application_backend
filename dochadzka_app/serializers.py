@@ -424,10 +424,14 @@ class ClubPaymentSettingsSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class MemberPaymentSerializer(serializers.ModelSerializer):
+    iban = serializers.SerializerMethodField()
+
     class Meta:
         model = MemberPayment
         fields = '__all__'
 
+    def get_iban(self, obj):
+        return obj.user.club.iban if obj.user and obj.user.club else None
 
 from rest_framework import serializers
 from decimal import Decimal
