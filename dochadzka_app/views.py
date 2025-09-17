@@ -2434,3 +2434,49 @@ def generate_payment(request, order_id):
         "amount": str(payment.amount),
         "is_paid": payment.is_paid,
     })
+
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def orders_bulk_update(request):
+    """
+    Uloží viac objednávok naraz.
+    Očakáva list objektov: [{id, status, total_amount, is_paid}, ...]
+    """
+    from django.utils.timezone import now
+    data = request.data
+    if not isinstance(data, list):
+        return Response({"detail": "Očakáva sa zoznam objednávok"}, status=400)
+
+    updated = []
+    for entry in data:
+        order = get_object_or_404(Order, pk=entry.get("id"))
+        serializer = OrderUpdateSerializer(order, data=entry, partial=True)
+        if serializer.is_valid():
+            order = serializer.save()
+
+            # 🔄 synchronizácia s OrderPayment
+            if "is_paid" in entry:
+                if hasattr(order, "payment"):
+                    order.payment.is_paid = order.is_paid
+                    order.payment.paid_at = now() if order.is_paid else None
+                    order.payment.save()
+                else:
+                    from .models import OrderPayment
+                    OrderPayment.objects.get_or_create(
+                        order=order,
+                        defaults={
+                            "user": order.user,
+                            "iban": order.club.iban if order.club else "",
+                            "variable_symbol": str(order.id),
+                            "amount": order.total_amount,
+                            "is_paid": order.is_paid,
+                            "paid_at": now() if order.is_paid else None,
+                        },
+                    )
+
+            updated.append(serializer.data)
+        else:
+            return Response(serializer.errors, status=400)
+
+    return Response(updated, status=200)
