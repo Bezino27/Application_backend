@@ -2415,8 +2415,8 @@ def generate_payment(request, order_id):
     payment, created = OrderPayment.objects.get_or_create(
         order=order,
         defaults={
-            "user": user,
-            "iban": user.iban,
+            "user": order.user,   # správny vlastník
+            "iban": order.user.iban,
             "variable_symbol": str(order.id),
             "amount": order.total_amount,
         },
