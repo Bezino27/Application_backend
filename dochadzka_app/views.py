@@ -2504,22 +2504,18 @@ def order_delete_view(request, order_id: int):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def check_number(request, club_id: int, number: int):
-    """
-    Overí, či číslo dresu v danom klube už existuje
-    """
-    club = get_object_or_404(Club, pk=club_id)
-
-    # predpokladám, že User má field `number` a `club`
-    player = User.objects.filter(club=club, number=number).first()
-
-    if player:
+def check_number(request, club_id, number: int):
+    players = User.objects.filter(club_id=club_id, number=number)
+    if players.exists():
         return Response({
             "taken": True,
-            "player_name": player.get_full_name() or player.username,
-            "birth_year": player.birth_date.year if player.birth_date else None
+            "players": [
+                {"name": p.get_full_name(), "birth_year": p.birth_date.year if p.birth_date else ""}
+                for p in players
+            ]
         })
-    return Response({"taken": False})
+    return Response({"taken": False, "players": []})
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
