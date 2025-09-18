@@ -11,7 +11,7 @@ from .models import (
     TrainingAttendance,
     Match,
     MatchParticipation,
-    Announcement, ExpoPushToken, Message, MessageReaction, MatchNomination, ClubPaymentSettings, MemberPayment,OrderPayment
+    Announcement, ExpoPushToken, Message, MessageReaction, MatchNomination, ClubPaymentSettings, MemberPayment,OrderPayment, JerseyOrder
 )
 
 
@@ -144,6 +144,14 @@ class OrderAdmin(admin.ModelAdmin):
 @admin.register(OrderPayment)
 class orderPayment(admin.ModelAdmin):
     list_display = ('order', 'user', 'iban', 'variable_symbol', 'amount', 'is_paid', 'created_at', 'paid_at')
+
+
+
+@admin.register(JerseyOrder)
+class jerseyOrder(admin.ModelAdmin):
+    list_display = ('club', 'surname', 'jersey_size', 'shorts_size', 'number', 'created_at')
+
+
 
 from django.contrib import admin
 from .models import Position, User
