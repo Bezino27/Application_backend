@@ -318,7 +318,7 @@ def notify_payment_status(user_id, is_paid, amount=None, vs=None):
 @shared_task
 def notify_payment_assigned(user_id: int, amount: str, vs: str, iban: str | None = None):
     """
-    Notifikácia, že používateľovi bola pridelená nová platba.
+    Notifikácia, že používateľovi bola pridelená nová platba..
     """
     try:
         user = User.objects.get(id=user_id)
