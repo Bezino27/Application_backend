@@ -311,3 +311,13 @@ class OrderPayment(models.Model):
 
     def __str__(self):
         return f"Platba za objednávku #{self.order.id} - {self.amount}€"
+    
+
+
+class JerseyOrder(models.Model):
+    club = models.ForeignKey(Club, on_delete=models.CASCADE)
+    surname = models.CharField(max_length=50)
+    jersey_size = models.CharField(max_length=5, choices=[(s, s) for s in ["XXS", "XS", "S", "M", "L", "XL", "XXL"]])
+    shorts_size = models.CharField(max_length=5, choices=[(s, s) for s in ["XXS", "XS", "S", "M", "L", "XL", "XXL"]])
+    number = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)

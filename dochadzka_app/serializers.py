@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, Club, Category, UserCategoryRole, Training, OrderPayment
+from .models import User, Club, Category, UserCategoryRole, Training, OrderPayment, JerseyOrder
 from django.utils.timezone import localtime
 
 class ClubSerializer(serializers.ModelSerializer):
@@ -604,3 +604,10 @@ class OrderPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderPayment
         fields = ["id", "order", "user", "iban", "variable_symbol", "amount", "is_paid", "created_at", "paid_at"]
+
+
+
+class JerseyOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JerseyOrder
+        fields = "__all__"

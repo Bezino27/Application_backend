@@ -2295,7 +2295,7 @@ from rest_framework.response import Response
 from rest_framework import status as http_status
 from django.shortcuts import get_object_or_404
 from .models import OrderItem, OrderPayment
-from .serializers import OrderItemSerializer, OrderUpdateSerializer, OrderPaymentSerializer
+from .serializers import OrderItemSerializer, OrderUpdateSerializer, OrderPaymentSerializer, JerseyOrderSerializer
 
 
 @api_view(["POST"])
@@ -2500,3 +2500,27 @@ def order_delete_view(request, order_id: int):
 
     order.delete()
     return Response({"detail": f"Objednávka {order_id} bola vymazaná."}, status=204)
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def check_number(request, club_id, number):
+    exists = User.objects.filter(club_id=club_id, number=number).first()
+    if exists:
+        return Response({
+            "taken": True,
+            "player_name": exists.name,
+            "birth_year": exists.birth_date.year if exists.birth_date else None
+        })
+    return Response({"taken": False})
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_jersey_order(request):
+    serializer = JerseyOrderSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data, status=201)
+    return Response(serializer.errors, status=400)
