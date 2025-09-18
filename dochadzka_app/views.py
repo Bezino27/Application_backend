@@ -2502,6 +2502,11 @@ def orders_bulk_update(request):
     updated = []
     for entry in data:
         order = get_object_or_404(Order, pk=entry.get("id"))
+
+        # uložíme pôvodné hodnoty pred update
+        old_is_paid = getattr(order, "is_paid", False)
+        old_status = getattr(order, "status", None)
+
         serializer = OrderUpdateSerializer(order, data=entry, partial=True)
 
         if serializer.is_valid():
@@ -2526,13 +2531,14 @@ def orders_bulk_update(request):
                             "paid_at": now() if order.is_paid else None,
                         },
                     )
-                # 🔔 notifikácia o zaplatení
-                if order.is_paid:
+
+                # 🔔 notifikácia IBA ak sa zmenilo na True
+                if not old_is_paid and order.is_paid:
                     from .tasks import notify_order_paid
                     notify_order_paid.delay(order.user.id, str(order.total_amount), str(order.id))
 
-            # 🔔 notifikácia o zmene statusu
-            if "status" in entry:
+            # 🔔 notifikácia IBA ak sa status zmenil
+            if "status" in entry and old_status != order.status:
                 from .tasks import notify_order_status_changed
                 notify_order_status_changed.delay(order.user.id, order.status)
 
@@ -2541,6 +2547,7 @@ def orders_bulk_update(request):
             return Response(serializer.errors, status=400)
 
     return Response(updated, status=200)
+
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
