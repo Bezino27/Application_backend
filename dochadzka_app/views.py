@@ -2503,6 +2503,7 @@ def orders_bulk_update(request):
     for entry in data:
         order = get_object_or_404(Order, pk=entry.get("id"))
         serializer = OrderUpdateSerializer(order, data=entry, partial=True)
+
         if serializer.is_valid():
             order = serializer.save()
 
@@ -2514,7 +2515,7 @@ def orders_bulk_update(request):
                     order.payment.save()
                 else:
                     from .models import OrderPayment
-                    OrderPayment.objects.get_or_create(
+                    payment, _ = OrderPayment.objects.get_or_create(
                         order=order,
                         defaults={
                             "user": order.user,
@@ -2525,14 +2526,21 @@ def orders_bulk_update(request):
                             "paid_at": now() if order.is_paid else None,
                         },
                     )
+                # 🔔 notifikácia o zaplatení
+                if order.is_paid:
+                    from .tasks import notify_order_paid
+                    notify_order_paid.delay(order.user.id, str(order.total_amount), str(order.id))
+
+            # 🔔 notifikácia o zmene statusu
+            if "status" in entry:
+                from .tasks import notify_order_status_changed
+                notify_order_status_changed.delay(order.user.id, order.status)
 
             updated.append(serializer.data)
         else:
             return Response(serializer.errors, status=400)
 
     return Response(updated, status=200)
-
-
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
