@@ -342,3 +342,41 @@ def notify_payment_assigned(user_id: int, amount: str, vs: str,):
 
     except Exception as e:
         logger.error(f"Chyba pri posielaní notifikácie o pridelení platby: {e}")
+
+
+
+@shared_task
+def notify_order_item_canceled(user_id: int, order_id: int, item_name: str, quantity: int, order_total: str):
+    """
+    Pošle používateľovi push notifikáciu, že v jeho objednávke bola zrušená položka.
+    """
+    try:
+        user = User.objects.get(id=user_id)
+        tokens = list(ExpoPushToken.objects.filter(user=user).values_list("token", flat=True))
+
+        if not tokens:
+            logger.warning(f"notify_order_item_canceled: user {user.username} nemá Expo tokeny.")
+            return
+
+        title = "Položka objednávky zrušená"
+        message = (
+            f"V objednávke #{order_id} bola zrušená položka {item_name} (x{quantity}). "
+            f"Nový súčet objednávky: {order_total} €."
+        )
+
+        for token in tokens:
+            send_push_notification(
+                token=token,
+                title=title,
+                message=message,
+                data={
+                    "type": "order_item_canceled",
+                    "order_id": order_id,
+                    "item_name": item_name,
+                    "quantity": quantity,
+                    "order_total": order_total,
+                },
+            )
+            logger.info(f"Notifikácia (order_item_canceled) → {user.username} ({token})")
+    except Exception as e:
+        logger.error(f"Chyba notify_order_item_canceled: {e}")

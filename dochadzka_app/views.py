@@ -2308,6 +2308,9 @@ from .models import OrderItem, OrderPayment
 from .serializers import OrderItemSerializer, OrderUpdateSerializer, OrderPaymentSerializer, JerseyOrderSerializer
 
 
+# dochadzka_app/views.py
+from .tasks import notify_order_item_canceled  # pridaj import
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def cancel_order_item_view(request, item_id: int):
@@ -2322,6 +2325,20 @@ def cancel_order_item_view(request, item_id: int):
     item.is_canceled = True
     item.save()
 
+    # 🔔 Push notifikácia pre vlastníka objednávky
+    try:
+        # bezpečný názov položky
+        item_name = item.product_name or item.product_code or item.product_type or "Položka"
+        notify_order_item_canceled.delay(
+            user_id=item.order.user_id,
+            order_id=item.order_id,
+            item_name=str(item_name),
+            quantity=int(item.quantity or 1),
+            order_total=str(item.order.total_amount),
+        )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"notify_order_item_canceled spawn error: {e}")
 
     try:
         serialized_item = OrderItemSerializer(item)
@@ -2337,6 +2354,7 @@ def cancel_order_item_view(request, item_id: int):
         "item": serialized_item.data,
         "order_total": str(item.order.total_amount),
     }, status=http_status.HTTP_200_OK)
+
 
 
 @api_view(['GET'])
