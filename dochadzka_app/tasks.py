@@ -380,3 +380,58 @@ def notify_order_item_canceled(user_id: int, order_id: int, item_name: str, quan
             logger.info(f"Notifikácia (order_item_canceled) → {user.username} ({token})")
     except Exception as e:
         logger.error(f"Chyba notify_order_item_canceled: {e}")
+
+
+
+@shared_task
+def notify_order_paid(user_id: int, amount: str, vs: str):
+    """Notifikácia, že objednávka bola zaplatená."""
+    try:
+        user = User.objects.get(id=user_id)
+        tokens = ExpoPushToken.objects.filter(user=user).values_list("token", flat=True)
+
+        if not tokens:
+            logger.warning(f"Používateľ {user.username} nemá expo tokeny → notifikácia sa neposiela.")
+            return
+
+        title = "Platba objednávky prijatá"
+        message = f"Tvoja objednávka (VS {vs}) bola uhradená. Suma: {amount} €."
+
+        for token in tokens:
+            send_push_notification(
+                token=token,
+                title=title,
+                message=message,
+                data={"type": "order_paid", "vs": vs, "amount": amount},
+            )
+            logger.info(f"Notifikácia order_paid → {user.username} ({token})")
+
+    except Exception as e:
+        logger.error(f"Chyba notify_order_paid: {e}")
+
+
+@shared_task
+def notify_order_status_changed(user_id: int, status: str):
+    """Notifikácia o zmene stavu objednávky."""
+    try:
+        user = User.objects.get(id=user_id)
+        tokens = ExpoPushToken.objects.filter(user=user).values_list("token", flat=True)
+
+        if not tokens:
+            logger.warning(f"Používateľ {user.username} nemá expo tokeny → notifikácia sa neposiela.")
+            return
+
+        title = "Zmena stavu objednávky"
+        message = f"Tvoja objednávka zmenila stav na: {status}."
+
+        for token in tokens:
+            send_push_notification(
+                token=token,
+                title=title,
+                message=message,
+                data={"type": "order_status", "status": status},
+            )
+            logger.info(f"Notifikácia order_status ({status}) → {user.username} ({token})")
+
+    except Exception as e:
+        logger.error(f"Chyba notify_order_status_changed: {e}")

@@ -2263,6 +2263,7 @@ from rest_framework import status as http_status
 from django.shortcuts import get_object_or_404
 from .models import Order,OrderItem
 from .serializers import OrderUpdateSerializer
+from .tasks import notify_order_paid, notify_order_status_changed
 
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
@@ -2280,13 +2281,14 @@ def order_update_view(request, order_id: int):
                 if order.is_paid:
                     from django.utils.timezone import now
                     order.payment.paid_at = now()
+                    notify_order_paid.delay(order.user.id, str(order.total_amount), str(order.id))
                 else:
                     order.payment.paid_at = None
                 order.payment.save()
             else:
                 # ak ešte nemá platbu, ale označíš ako zaplatenú
                 from .models import OrderPayment
-                OrderPayment.objects.create(
+                payment = OrderPayment.objects.create(
                     order=order,
                     user=order.user,
                     iban=order.user.iban,
@@ -2295,6 +2297,11 @@ def order_update_view(request, order_id: int):
                     is_paid=True,
                     paid_at=now(),
                 )
+                notify_order_paid.delay(order.user.id, str(payment.amount), str(payment.variable_symbol))
+
+        # 🔥 Notifikácia o zmene statusu
+        if "status" in request.data:
+            notify_order_status_changed.delay(order.user.id, order.status)
 
         return Response(serializer.data, status=200)
     return Response(serializer.errors, status=400)
