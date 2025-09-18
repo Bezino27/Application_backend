@@ -2447,7 +2447,6 @@ def generate_payment(request, order_id):
             user_id=target_user.id,
             amount=str(payment.amount),
             vs=payment.variable_symbol,
-            iban=payment.iban or "",
         )
         logger.info(
             f"Notifikácia: platba {payment.amount}€ (VS {payment.variable_symbol}) "
