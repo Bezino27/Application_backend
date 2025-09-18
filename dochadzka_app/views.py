@@ -2397,52 +2397,62 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Order, OrderPayment
-from .tasks import notify_payment_assigned  
+from .tasks import notify_payment_assigned
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def generate_payment(request, order_id):
-    try:
-        order = Order.objects.get(id=order_id)
-    except Order.DoesNotExist:
-        return Response({"error": "Objednávka neexistuje"}, status=404)
+    """
+    Vygeneruje alebo zaktualizuje platbu pre objednávku
+    a pošle používateľovi notifikáciu, že mu bola vytvorená nová platba.
+    """
+    order = get_object_or_404(Order, id=order_id)
+    target_user = order.user  # vlastník objednávky
 
-    user = request.user
-    if not user.iban:
-        return Response({"error": "Nemáš nastavený IBAN v profile"}, status=400)
+    if not target_user.iban:
+        return Response({"error": "Používateľ nemá nastavený IBAN v profile"}, status=400)
 
-    # ak už existuje, nech sa použije
+    # ak ešte neexistuje → vytvoríme
     payment, created = OrderPayment.objects.get_or_create(
         order=order,
         defaults={
-            "user": order.user,   # správny vlastník
-            "iban": order.user.iban,
+            "user": target_user,
+            "iban": target_user.iban,
             "variable_symbol": str(order.id),
             "amount": order.total_amount,
         },
     )
 
-    # ak existuje ale zmenila sa suma alebo IBAN, update
+    # ak existuje, aktualizujeme podľa aktuálnej objednávky
     if not created:
-        payment.iban = user.iban
+        payment.iban = target_user.iban
         payment.amount = order.total_amount
         payment.variable_symbol = str(order.id)
         payment.save()
 
+    # notifikácia len pri vytvorení novej platby
     if created:
-        notify_payment_assigned.delay(
-            user_id=order.user.id,   # majiteľ objednávky
-            amount=str(payment.amount),
-            vs=payment.variable_symbol,
-            iban=payment.iban or "",
-        )
+        try:
+            notify_payment_assigned.delay(
+                user_id=target_user.id,
+                amount=str(payment.amount),
+                vs=payment.variable_symbol,
+                iban=payment.iban or "",
+            )
+            logger.info(
+                f"Notifikácia: pridelená nová platba {payment.amount}€ "
+                f"(VS {payment.variable_symbol}) pre {target_user.username}"
+            )
+        except Exception as e:
+            logger.error(f"Chyba pri spúšťaní notifikácie: {e}")
+
     return Response({
         "vs": payment.variable_symbol,
         "iban": payment.iban,
         "amount": str(payment.amount),
         "is_paid": payment.is_paid,
     })
-
 
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])

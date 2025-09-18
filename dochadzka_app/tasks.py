@@ -329,16 +329,18 @@ User = get_user_model()
 @shared_task
 def notify_payment_assigned(user_id: int, amount: str, vs: str, iban: str | None = None):
     """
-    Notifikácia, že používateľovi bola pridelená platba (vznikla požiadavka na úhradu).
+    Notifikácia, že používateľovi bola pridelená nová platba.
     """
     try:
         user = User.objects.get(id=user_id)
         tokens = ExpoPushToken.objects.filter(user=user).values_list("token", flat=True)
 
-        title = "Pridelená platba"
-        base = f"Bola ti vytvorená platba vo výške {amount} € (VS {vs})."
-        more = f" IBAN: {iban}" if iban else ""
-        message = base + more + " Uhrádzaj prosím v stanovenej lehote."
+        if not tokens:
+            logger.warning(f"Používateľ {user.username} nemá expo tokeny → notifikácia sa neposiela.")
+            return
+
+        title = "Nová platba"
+        message = f"Bola ti vytvorená platba vo výške {amount} € (VS {vs}). IBAN: {iban or '-'}"
 
         for token in tokens:
             send_push_notification(
