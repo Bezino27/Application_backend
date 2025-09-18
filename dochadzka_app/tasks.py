@@ -435,3 +435,34 @@ def notify_order_status_changed(user_id: int, status: str):
 
     except Exception as e:
         logger.error(f"Chyba notify_order_status_changed: {e}")
+
+@shared_task
+def notify_order_deleted(user_id: int, order_id: str, amount: str = None):
+    """
+    Pošle notifikáciu, že objednávka bola zmazaná.
+    """
+    try:
+        user = User.objects.get(id=user_id)
+        tokens = ExpoPushToken.objects.filter(user=user).values_list("token", flat=True)
+
+        if not tokens:
+            logger.warning(f"Používateľ {user.username} nemá expo tokeny → notifikácia sa neposiela.")
+            return
+
+        title = "Objednávka zrušená"
+        if amount:
+            message = f"Tvoja objednávka #{order_id} (suma {amount} €) bola zrušená."
+        else:
+            message = f"Tvoja objednávka #{order_id} bola zrušená."
+
+        for token in tokens:
+            send_push_notification(
+                token=token,
+                title=title,
+                message=message,
+                data={"type": "order_deleted", "order_id": order_id, "amount": amount or ""},
+            )
+            logger.info(f"Notifikácia zrušenej objednávky → {user.username} ({token})")
+
+    except Exception as e:
+        logger.error(f"Chyba pri posielaní notifikácie o zmazaní objednávky: {e}")

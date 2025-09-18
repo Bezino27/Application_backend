@@ -2560,13 +2560,24 @@ from .models import Order
 def order_delete_view(request, order_id: int):
     order = get_object_or_404(Order, pk=order_id)
 
-    # 🔒 Kontrola – napr. admin klubu alebo vlastník objednávky
+    # 🔒 Kontrola – môže zmazať iba vlastník alebo admin
     if request.user != order.user and not request.user.roles.filter(role="admin").exists():
         return Response({"detail": "Nemáš oprávnenie vymazať túto objednávku."}, status=403)
 
+    target_user = order.user
+    total_amount = str(order.total_amount)
     order.delete()
-    return Response({"detail": f"Objednávka {order_id} bola vymazaná."}, status=204)
 
+    # 🔔 Notifikácia po vymazaní
+    try:
+        from .tasks import notify_order_deleted
+        notify_order_deleted.delay(target_user.id, str(order_id), total_amount)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Chyba pri spúšťaní notify_order_deleted: {e}")
+
+    return Response({"detail": f"Objednávka {order_id} bola vymazaná."}, status=204)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
