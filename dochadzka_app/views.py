@@ -2480,3 +2480,23 @@ def orders_bulk_update(request):
             return Response(serializer.errors, status=400)
 
     return Response(updated, status=200)
+
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from .models import Order
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def order_delete_view(request, order_id: int):
+    order = get_object_or_404(Order, pk=order_id)
+
+    # 🔒 Kontrola – napr. admin klubu alebo vlastník objednávky
+    if request.user != order.user and not request.user.roles.filter(role="admin").exists():
+        return Response({"detail": "Nemáš oprávnenie vymazať túto objednávku."}, status=403)
+
+    order.delete()
+    return Response({"detail": f"Objednávka {order_id} bola vymazaná."}, status=204)
