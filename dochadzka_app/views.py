@@ -1821,7 +1821,12 @@ def admin_member_payments(request):
                     payment = MemberPayment.objects.get(id=payment_id, club=request.user.club)
                     payment.is_paid = is_paid
                     payment.save()
-                    notify_payment_status.delay(user_id=payment.user.id, is_paid=is_paid)
+                    notify_payment_status.delay(
+                        user_id=payment.user.id,
+                        is_paid=is_paid,
+                        amount=str(payment.amount),
+                        vs=payment.variable_symbol
+                    )
                     updated.append(payment_id)
                 except MemberPayment.DoesNotExist:
                     continue
@@ -1840,7 +1845,12 @@ def admin_member_payments(request):
                 payment = MemberPayment.objects.get(id=payment_id, club=request.user.club)
                 payment.is_paid = is_paid
                 payment.save()
-                notify_payment_status.delay(user_id=payment.user.id, is_paid=is_paid)
+                notify_payment_status.delay(
+                    user_id=payment.user.id,
+                    is_paid=is_paid,
+                    amount=str(payment.amount),
+                    vs=payment.variable_symbol
+                )
                 return Response({"success": True, "updated": [payment_id]})
             except MemberPayment.DoesNotExist:
                 return Response({"error": "Platba neexistuje."}, status=404)
