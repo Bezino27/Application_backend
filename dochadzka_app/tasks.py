@@ -316,7 +316,7 @@ def notify_payment_status(user_id, is_paid, amount=None, vs=None):
         logger.error(f"Chyba pri posielaní stavu platby: {e}")
 
 @shared_task
-def notify_payment_assigned(user_id: int, amount: str, vs: str, iban: str | None = None):
+def notify_payment_assigned(user_id: int, amount: str, vs: str,):
     """
     Notifikácia, že používateľovi bola pridelená nová platba..
     """
@@ -329,14 +329,14 @@ def notify_payment_assigned(user_id: int, amount: str, vs: str, iban: str | None
             return
 
         title = "Nová platba"
-        message = f"Bola ti vytvorená platba vo výške {amount} € (VS {vs}). IBAN: {iban or '-'}"
+        message = f"Bola ti vytvorená platba vo výške {amount} € (VS {vs})."
 
         for token in tokens:
             send_push_notification(
                 token=token,
                 title=title,
                 message=message,
-                data={"type": "payment_assigned", "amount": amount, "vs": vs, "iban": iban or ""},
+                data={"type": "payment_assigned", "amount": amount, "vs": vs,},
             )
             logger.info(f"Notifikácia pridelenia platby → {user.username} ({token})")
 
