@@ -2431,12 +2431,11 @@ def generate_payment(request, order_id):
 
     if created:
         notify_payment_assigned.delay(
-            user_id=user.id,
+            user_id=order.user.id,   # majiteľ objednávky
             amount=str(payment.amount),
             vs=payment.variable_symbol,
             iban=payment.iban or "",
         )
-    
     return Response({
         "vs": payment.variable_symbol,
         "iban": payment.iban,
