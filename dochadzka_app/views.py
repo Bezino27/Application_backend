@@ -2432,20 +2432,19 @@ def generate_payment(request, order_id):
         payment.save()
 
     # notifikácia len pri vytvorení novej platby
-    if created:
-        try:
-            notify_payment_assigned.delay(
-                user_id=target_user.id,
-                amount=str(payment.amount),
-                vs=payment.variable_symbol,
-                iban=payment.iban or "",
-            )
-            logger.info(
-                f"Notifikácia: pridelená nová platba {payment.amount}€ "
-                f"(VS {payment.variable_symbol}) pre {target_user.username}"
-            )
-        except Exception as e:
-            logger.error(f"Chyba pri spúšťaní notifikácie: {e}")
+    try:
+        notify_payment_assigned.delay(
+            user_id=target_user.id,
+            amount=str(payment.amount),
+            vs=payment.variable_symbol,
+            iban=payment.iban or "",
+        )
+        logger.info(
+            f"Notifikácia: platba {payment.amount}€ (VS {payment.variable_symbol}) "
+            f"pre {target_user.username} odoslaná"
+        )
+    except Exception as e:
+        logger.error(f"Chyba pri spúšťaní notifikácie: {e}")
 
     return Response({
         "vs": payment.variable_symbol,
