@@ -2397,6 +2397,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Order, OrderPayment
+from .tasks import notify_payment_assigned  
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -2428,6 +2429,14 @@ def generate_payment(request, order_id):
         payment.variable_symbol = str(order.id)
         payment.save()
 
+    if created:
+        notify_payment_assigned.delay(
+            user_id=user.id,
+            amount=str(payment.amount),
+            vs=payment.variable_symbol,
+            iban=payment.iban or "",
+        )
+    
     return Response({
         "vs": payment.variable_symbol,
         "iban": payment.iban,

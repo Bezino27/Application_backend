@@ -314,3 +314,40 @@ def notify_payment_status(user_id, is_paid, amount=None, vs=None):
 
     except Exception as e:
         logger.error(f"Chyba pri posielaní stavu platby: {e}")
+
+
+
+# dochadzka_app/tasks.py
+from celery import shared_task
+from django.contrib.auth import get_user_model
+from .models import ExpoPushToken
+import logging
+
+logger = logging.getLogger(__name__)
+User = get_user_model()
+
+@shared_task
+def notify_payment_assigned(user_id: int, amount: str, vs: str, iban: str | None = None):
+    """
+    Notifikácia, že používateľovi bola pridelená platba (vznikla požiadavka na úhradu).
+    """
+    try:
+        user = User.objects.get(id=user_id)
+        tokens = ExpoPushToken.objects.filter(user=user).values_list("token", flat=True)
+
+        title = "Pridelená platba"
+        base = f"Bola ti vytvorená platba vo výške {amount} € (VS {vs})."
+        more = f" IBAN: {iban}" if iban else ""
+        message = base + more + " Uhrádzaj prosím v stanovenej lehote."
+
+        for token in tokens:
+            send_push_notification(
+                token=token,
+                title=title,
+                message=message,
+                data={"type": "payment_assigned", "amount": amount, "vs": vs, "iban": iban or ""},
+            )
+            logger.info(f"Notifikácia pridelenia platby → {user.username} ({token})")
+
+    except Exception as e:
+        logger.error(f"Chyba pri posielaní notifikácie o pridelení platby: {e}")
