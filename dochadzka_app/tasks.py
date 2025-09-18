@@ -315,17 +315,6 @@ def notify_payment_status(user_id, is_paid, amount=None, vs=None):
     except Exception as e:
         logger.error(f"Chyba pri posielaní stavu platby: {e}")
 
-
-
-# dochadzka_app/tasks.py
-from celery import shared_task
-from django.contrib.auth import get_user_model
-from .models import ExpoPushToken
-import logging
-
-logger = logging.getLogger(__name__)
-User = get_user_model()
-
 @shared_task
 def notify_payment_assigned(user_id: int, amount: str, vs: str, iban: str | None = None):
     """
