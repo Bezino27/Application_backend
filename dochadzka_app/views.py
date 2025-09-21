@@ -2435,47 +2435,66 @@ from .models import Order, OrderPayment
 from .tasks import notify_payment_assigned
 
 
+from django.db import transaction
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def generate_payment(request, order_id):
     """
-    Vygeneruje alebo zaktualizuje platbu pre objednávku
-    a pošle používateľovi notifikáciu, že mu bola vytvorená nová platba.
+    Vygeneruje alebo zaktualizuje platbu pre objednávku.
+    IBAN, ktorý sa uloží, bude IBAN používateľa, ktorý túto platbu generuje (request.user).
     """
     order = get_object_or_404(Order, id=order_id)
-    target_user = order.user  # vlastník objednávky
+    recipient = order.user  # vlastník objednávky
 
-    if not target_user.iban:
-        return Response({"error": "Používateľ nemá nastavený IBAN v profile"}, status=400)
+    generator = request.user  # kto platbu generuje
+    if not getattr(generator, "iban", None):
+        return Response({"error": "Generátor platby (request.user) nemá nastavený IBAN v profile"}, status=400)
 
-    # ak ešte neexistuje → vytvoríme
-    payment, created = OrderPayment.objects.get_or_create(
-        order=order,
-        defaults={
-            "user": target_user,
-            "iban": target_user.iban,
-            "variable_symbol": str(order.id),
-            "amount": order.total_amount,
-        },
-    )
+    # ak chceš zároveň overiť, že len admin / konkrétny role môžu vytvárať platby:
+    # if not (generator.is_staff or generator.has_role("admin")):
+    #     return Response({"error": "Nemáš oprávnenie generovať platby"}, status=403)
 
-    # ak existuje, aktualizujeme podľa aktuálnej objednávky
-    if not created:
-        payment.iban = target_user.iban
-        payment.amount = order.total_amount
-        payment.variable_symbol = str(order.id)
-        payment.save()
+    with transaction.atomic():
+        payment, created = OrderPayment.objects.get_or_create(
+            order=order,
+            defaults={
+                # user tu ponechám recipientom (vlastník objednávky),
+                "user": recipient,
+                # IBAN uložíme generatorov IBAN (ten, kto platbu generuje)
+                "iban": generator.iban,
+                "variable_symbol": str(order.id),
+                "amount": order.total_amount,
+                # prípadne ulož info, kto generoval, ak máš také pole:
+                # "generated_by": generator,
+            },
+        )
 
-    # notifikácia len pri vytvorení novej platby
+        # ak už existuje, vždy aktualizujeme IBAN na IBAN generátora
+        if not created:
+            payment.iban = generator.iban
+            payment.amount = order.total_amount
+            payment.variable_symbol = str(order.id)
+            # ak máš field generated_by, aktualizuj ho tiež:
+            # payment.generated_by = generator
+            payment.save()
+
+    # notifikácia príjemcovi (vlastníkovi objednávky)
     try:
         notify_payment_assigned.delay(
-            user_id=target_user.id,
+            user_id=recipient.id,
             amount=str(payment.amount),
             vs=payment.variable_symbol,
+            # môžete pridať informáciu kto platbu vytvoril:
+            # generated_by_username=generator.username
         )
         logger.info(
             f"Notifikácia: platba {payment.amount}€ (VS {payment.variable_symbol}) "
-            f"pre {target_user.username} odoslaná"
+            f"pre {recipient.username} odoslaná (vytvoril: {generator.username})"
         )
     except Exception as e:
         logger.error(f"Chyba pri spúšťaní notifikácie: {e}")
@@ -2485,6 +2504,8 @@ def generate_payment(request, order_id):
         "iban": payment.iban,
         "amount": str(payment.amount),
         "is_paid": payment.is_paid,
+        # pridaj info o tom, kto platbu vytvoril
+        "generated_by": generator.username,
     })
 
 @api_view(["PUT"])
