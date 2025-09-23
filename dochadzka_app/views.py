@@ -2406,6 +2406,15 @@ def payment_qr(request, payment_type, pk):
         message = f"Objednávka #{payment.order.id}"
         date = None
 
+    # 🔥 Rozlíšenie medzi klasickou objednávkou a jersey objednávkou
+        if payment.order:
+            message = f"Objednávka #{payment.order.id}"
+        elif payment.jersey_order:
+            message = f"Dresová objednávka #{payment.jersey_order.id}"
+        else:
+            message = "Objednávka"
+        date = None
+
     else:
         return HttpResponse("Neplatný typ platby", status=400)
 
