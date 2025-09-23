@@ -2365,6 +2365,8 @@ def cancel_order_item_view(request, item_id: int):
 
 
 
+from django.db.models import Q
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def orders_payments(request):
@@ -2376,12 +2378,11 @@ def orders_payments(request):
         payments = OrderPayment.objects.all()
     else:
         payments = OrderPayment.objects.filter(
-            Q(order__user=user) | Q(jersey_order__club=user.club)
+            Q(order__user=user) | Q(jersey_order__user=user)   # 🔥 len jeho vlastné objednávky dresov
         )
 
     serializer = OrderPaymentSerializer(payments, many=True)
     return Response(serializer.data)
-
 import io
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
