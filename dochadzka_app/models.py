@@ -294,14 +294,14 @@ class OrderItem(models.Model):
     
 class JerseyOrder(models.Model):
     club = models.ForeignKey(Club, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="jersey_orders")  # 🔥
     surname = models.CharField(max_length=50)
     jersey_size = models.CharField(max_length=5, choices=[(s, s) for s in ["XXS", "XS", "S", "M", "L", "XL", "XXL"]])
     shorts_size = models.CharField(max_length=5, choices=[(s, s) for s in ["XXS", "XS", "S", "M", "L", "XL", "XXL"]])
     number = models.PositiveIntegerField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_paid = models.BooleanField(default=False)
-
+    created_at = models.DateTimeField(auto_now_add=True)
 
     # models.py
 from django.db import models

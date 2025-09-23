@@ -2623,7 +2623,9 @@ def check_number(request, club_id, number: int):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_jersey_order(request):
-    serializer = JerseyOrderSerializer(data=request.data)
+    data = request.data.copy()
+    data["user"] = request.user.id   # 🔥 priradíme prihláseného usera
+    serializer = JerseyOrderSerializer(data=data)
     if serializer.is_valid():
         serializer.save()
         return Response(serializer.data, status=201)
@@ -2633,16 +2635,12 @@ def create_jersey_order(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def jersey_orders_list(request, club_id):
-    user = request.user
-    qs = JerseyOrder.objects.filter(club_id=club_id)
-
-    # Ak nie je admin → ukáž iba svoje objednávky
-    if not user.roles.filter(role="admin").exists():
-        qs = qs.filter(user=user)
-
+def jersey_orders_list(request, club_id: int):
+    qs = JerseyOrder.objects.filter(club_id=club_id, user=request.user).order_by("-created_at")
     serializer = JerseyOrderSerializer(qs, many=True)
     return Response(serializer.data)
+
+
 
 # views.py
 from .models import JerseyOrder
