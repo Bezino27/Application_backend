@@ -2574,7 +2574,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from .models import Order
+from .models import Order, JerseyOrder
 
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
@@ -2623,3 +2623,13 @@ def create_jersey_order(request):
         serializer.save()
         return Response(serializer.data, status=201)
     return Response(serializer.errors, status=400)
+
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def jersey_orders_list(request, club_id: int):
+    orders = JerseyOrder.objects.filter(club_id=club_id).order_by("-created_at")
+    from .serializers import JerseyOrderSerializer
+    serializer = JerseyOrderSerializer(orders, many=True)
+    return Response(serializer.data)

@@ -611,3 +611,5 @@ class JerseyOrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = JerseyOrder
         fields = "__all__"
+
+
