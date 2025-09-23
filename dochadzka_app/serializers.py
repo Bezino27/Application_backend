@@ -603,7 +603,8 @@ class ClubOrderReadSerializer(serializers.ModelSerializer):
 class OrderPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = OrderPayment
-        fields = ["id", "order", "user", "iban", "variable_symbol", "amount", "is_paid", "created_at", "paid_at"]
+        fields = ["id", "order","jersey_order",
+                "user", "iban", "variable_symbol", "amount", "is_paid", "created_at", "paid_at"]
 
 
 

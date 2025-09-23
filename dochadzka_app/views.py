@@ -2364,19 +2364,20 @@ def cancel_order_item_view(request, item_id: int):
 
 
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def orders_payments(request):
     user = request.user
     show_all = request.query_params.get('all') == 'true'
-
-    is_admin = user.roles.filter(role="admin").exists()  # alebo podľa tvojho modelu
+    is_admin = user.roles.filter(role="admin").exists()
 
     if show_all and is_admin:
         payments = OrderPayment.objects.all()
     else:
-        # vráť len tie platby, kde objednávku vytvoril prihlásený user
-        payments = OrderPayment.objects.filter(order__user=user)
+        payments = OrderPayment.objects.filter(
+            Q(order__user=user) | Q(jersey_order__club=user.club)
+        )
 
     serializer = OrderPaymentSerializer(payments, many=True)
     return Response(serializer.data)
