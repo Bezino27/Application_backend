@@ -2755,7 +2755,6 @@ from .models import Order
 from .serializers import OrderSerializer
 
 @api_view(["POST"])
-@permission_classes([AllowAny])  # môže posielať hocikto
 def create_order(request):
     serializer = OrderSerializer(data=request.data)
     if serializer.is_valid():
