@@ -98,7 +98,7 @@ urlpatterns = [
     path("jersey-orders/bulk-update/", jersey_orders_bulk_update),
     path("jersey-orders/<int:order_id>/delete/", jersey_order_delete_view),
     path("jersey-orders/<int:order_id>/generate-payment/", generate_jersey_payment, name="generate_jersey_payment"),
-    path("orders/", create_order, name="create_order"),
+    path("orders_ludimus/", create_order, name="create_order"),
 
 
 
