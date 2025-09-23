@@ -292,13 +292,25 @@ class OrderItem(models.Model):
     def __str__(self):
         return f"{self.get_product_type_display()} – {self.product_name or self.product_code or 'item'}"
     
+class JerseyOrder(models.Model):
+    club = models.ForeignKey(Club, on_delete=models.CASCADE)
+    surname = models.CharField(max_length=50)
+    jersey_size = models.CharField(max_length=5, choices=[(s, s) for s in ["XXS", "XS", "S", "M", "L", "XL", "XXL"]])
+    shorts_size = models.CharField(max_length=5, choices=[(s, s) for s in ["XXS", "XS", "S", "M", "L", "XL", "XXL"]])
+    number = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    is_paid = models.BooleanField(default=False)
+
 
     # models.py
 from django.db import models
 from django.conf import settings
 
 class OrderPayment(models.Model):
-    order = models.OneToOneField("Order", on_delete=models.CASCADE, related_name="payment")
+    order = models.OneToOneField(Order, null=True, blank=True, on_delete=models.CASCADE, related_name="payment")
+    jersey_order = models.OneToOneField(JerseyOrder, null=True, blank=True, on_delete=models.CASCADE, related_name="payment")
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="order_payments")
 
     iban = models.CharField(max_length=34)             # IBAN pre objednávky (môže byť iný než pre členské platby)
@@ -310,16 +322,9 @@ class OrderPayment(models.Model):
     paid_at = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
-        return f"Platba za objednávku #{self.order.id} - {self.amount}€"
-    
+        if self.order:
+            return f"Platba za objednávku #{self.order.id} - {self.amount}€"
+        elif self.jersey_order:
+            return f"Platba za dresovú objednávku #{self.jersey_order.id} - {self.amount}€"
+        return f"Platba bez objednávky - {self.amount}€"
 
-
-class JerseyOrder(models.Model):
-    club = models.ForeignKey(Club, on_delete=models.CASCADE)
-    surname = models.CharField(max_length=50)
-    jersey_size = models.CharField(max_length=5, choices=[(s, s) for s in ["XXS", "XS", "S", "M", "L", "XL", "XXL"]])
-    shorts_size = models.CharField(max_length=5, choices=[(s, s) for s in ["XXS", "XS", "S", "M", "L", "XL", "XXL"]])
-    number = models.PositiveIntegerField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    is_paid = models.BooleanField(default=False)
