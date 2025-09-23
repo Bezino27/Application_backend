@@ -2395,46 +2395,40 @@ def payment_qr(request, payment_type, pk):
         iban = payment.club.iban
         vs = payment.variable_symbol
         amount = float(payment.amount)
-        message = payment.description or "Clenský príspevok"
-        date = payment.due_date  # ak máš date field, inak None
+        message = payment.description or "Členský príspevok"
+        date = payment.due_date
 
     elif payment_type == "order":
         payment = get_object_or_404(OrderPayment, pk=pk)
         iban = payment.iban
         vs = payment.variable_symbol
         amount = float(payment.amount)
-        message = f"Objednávka #{payment.order.id}"
-        date = None
-    
-    elif payment_type == "jersey_order":
-        payment = get_object_or_404(JerseyOrder, pk=pk)
-        iban = payment.iban
-        vs = payment.variable_symbol
-        amount = float(payment.amount)
-        message = f"Objednávka dresov #{payment.order.id}"
-        date = None
 
-    
+        if payment.order:
+            message = f"Objednávka #{payment.order.id}"
+        elif payment.jersey_order:
+            message = f"Dresová objednávka #{payment.jersey_order.id}"
+        else:
+            message = "Objednávka"
+
+        date = None
 
     else:
         return HttpResponse("Neplatný typ platby", status=400)
 
-    # generuje PAY by square reťazec
     code_string = generate(
         amount=amount,
         iban=iban,
         variable_symbol=vs,
         note=message,
         date=date,
-        currency="EUR"
+        currency="EUR",
     )
 
-    # vytvor QR obrázok z toho stringu
     qr_img = qrcode.make(code_string)
     buffer = io.BytesIO()
     qr_img.save(buffer, format="PNG")
     buffer.seek(0)
-
     return HttpResponse(buffer, content_type="image/png")
 
 
