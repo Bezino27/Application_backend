@@ -2662,8 +2662,9 @@ def jersey_order_delete_view(request, order_id: int):
 def jersey_orders_bulk_update(request):
     """
     Aktualizuje viac objednávok dresov naraz.
-    Očakáva list objektov: [{id, is_paid}, ...]
+    Očakáva list objektov: [{id, amount, is_paid}, ...]
     """
+    from django.utils.timezone import now
     data = request.data
     if not isinstance(data, list):
         return Response({"detail": "Očakáva sa zoznam objednávok"}, status=400)
@@ -2671,15 +2672,43 @@ def jersey_orders_bulk_update(request):
     updated = []
     for entry in data:
         order = get_object_or_404(JerseyOrder, pk=entry.get("id"))
+
+        old_is_paid = order.is_paid
+
         serializer = JerseyOrderSerializer(order, data=entry, partial=True)
         if serializer.is_valid():
-            updated.append(serializer.save())
+            order = serializer.save()
+
+            # 🔄 synchronizácia s OrderPayment
+            if "is_paid" in entry:
+                if hasattr(order, "payment"):
+                    order.payment.is_paid = order.is_paid
+                    order.payment.paid_at = now() if order.is_paid else None
+                    order.payment.save()
+                else:
+                    from .models import OrderPayment
+                    payment, _ = OrderPayment.objects.get_or_create(
+                        jersey_order=order,
+                        defaults={
+                            "user": request.user,
+                            "iban": request.user.iban if hasattr(request.user, "iban") else "",
+                            "variable_symbol": f"J{order.id}",
+                            "amount": order.amount,
+                            "is_paid": order.is_paid,
+                            "paid_at": now() if order.is_paid else None,
+                        },
+                    )
+
+                # 🔔 notifikácia iba ak sa zmenilo na True
+                if not old_is_paid and order.is_paid:
+                    from .tasks import notify_order_paid
+                    notify_order_paid.delay(order.id, str(order.amount), f"J{order.id}")
+
+            updated.append(order)
         else:
             return Response(serializer.errors, status=400)
 
     return Response(JerseyOrderSerializer(updated, many=True).data)
-
-
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
