@@ -2743,3 +2743,35 @@ def generate_jersey_payment(request, order_id):
         "amount": str(payment.amount),
         "is_paid": payment.is_paid,
     })
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
+from django.core.mail import send_mail
+from django.conf import settings
+from .models import Order
+from .serializers import OrderSerializer
+
+@api_view(["POST"])
+@permission_classes([AllowAny])  # môže posielať hocikto
+def create_order(request):
+    serializer = OrderSerializer(data=request.data)
+    if serializer.is_valid():
+        order = serializer.save()
+
+        # pošli mail adminovi
+        subject = f"Nová objednávka balíka ({order.get_plan_display()})"
+        message = (
+            f"Názov klubu: {order.club_name}\n"
+            f"Admin: {order.first_name} {order.last_name}\n"
+            f"Email: {order.email}\n"
+            f"Telefón: {order.phone}\n"
+            f"Balík: {order.get_plan_display()}\n"
+            f"Dátum: {order.created_at.strftime('%d.%m.%Y %H:%M')}"
+        )
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [settings.DEFAULT_FROM_EMAIL])
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -127,7 +127,7 @@ class MatchNominationAdmin(admin.ModelAdmin):
 
 
 from django.contrib import admin
-from .models import Order, OrderItem
+from .models import Order, OrderItem, Order_Ludimus
 
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
@@ -151,6 +151,13 @@ class orderPayment(admin.ModelAdmin):
 class jerseyOrder(admin.ModelAdmin):
     list_display = ('club', 'surname', 'jersey_size', 'shorts_size', 'number', 'created_at')
 
+
+@admin.register(Order_Ludimus)
+class Order_Ludimus(admin.ModelAdmin):
+    list_display = ("club_name", "first_name", "last_name", "email", "phone", "plan", "created_at", "processed")
+    list_filter = ("plan", "processed", "created_at")
+    search_fields = ("club_name", "first_name", "last_name", "email", "phone")
+    ordering = ("-created_at",)
 
 
 from django.contrib import admin

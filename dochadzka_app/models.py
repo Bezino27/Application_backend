@@ -328,3 +328,23 @@ class OrderPayment(models.Model):
             return f"Platba za dresovú objednávku #{self.jersey_order.id} - {self.amount}€"
         return f"Platba bez objednávky - {self.amount}€"
 
+from django.db import models
+
+class Order_Ludimus(models.Model):
+    PLAN_CHOICES = [
+        ("start", "Štart – 0 € (1. mesiac zdarma)"),
+        ("yearly", "Ročne – 25 €/mes (platba ročne)"),
+        ("monthly", "Flexi – 30 €/mes (platba mesačne)"),
+    ]
+
+    club_name = models.CharField("Názov klubu", max_length=150)
+    first_name = models.CharField("Meno", max_length=100)
+    last_name = models.CharField("Priezvisko", max_length=100)
+    email = models.EmailField("Email")
+    phone = models.CharField("Telefón", max_length=30)
+    plan = models.CharField("Balík", max_length=20, choices=PLAN_CHOICES)
+    created_at = models.DateTimeField("Vytvorené", auto_now_add=True)
+    processed = models.BooleanField("Spracované", default=False)
+
+    def __str__(self):
+        return f"{self.club_name} – {self.get_plan_display()}"
