@@ -2695,7 +2695,7 @@ def generate_jersey_payment(request, order_id):
         defaults={
             "user": request.user,
             "iban": request.user.iban,
-            "variable_symbol": f"J{order.id}",
+            "variable_symbol": f"{order.id}",
             "amount": order.amount,
             "is_paid": order.is_paid,
         },
