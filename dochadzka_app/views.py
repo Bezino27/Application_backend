@@ -2770,7 +2770,5 @@ def create_order(request):
             f"Balík: {order.get_plan_display()}\n"
             f"Dátum: {order.created_at.strftime('%d.%m.%Y %H:%M')}"
         )
-        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [settings.DEFAULT_FROM_EMAIL])
-
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
