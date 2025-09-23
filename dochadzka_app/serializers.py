@@ -617,7 +617,7 @@ class JerseyOrderSerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 from .models import Order
 
-class OrderSerializer(serializers.ModelSerializer):
+class OrderLudimusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order_Ludimus
         fields = ["id", "club_name", "first_name", "last_name", "email", "phone", "plan", "created_at"]
