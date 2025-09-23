@@ -2755,6 +2755,7 @@ from .models import Order
 from .serializers import OrderLudimusSerializer
 
 @api_view(["POST"])
+@permission_classes([AllowAny])
 def create_order(request):
     serializer = OrderLudimusSerializer(data=request.data)
     if serializer.is_valid():
