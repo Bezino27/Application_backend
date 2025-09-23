@@ -2637,7 +2637,7 @@ def create_jersey_order(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def jersey_orders_list(request, club_id: int):
-    qs = JerseyOrder.objects.filter(club_id=club_id, user=request.user).order_by("-created_at")
+    qs = JerseyOrder.objects.filter(club_id=club_id).order_by("-created_at")
     serializer = JerseyOrderSerializer(qs, many=True)
     return Response(serializer.data)
 
