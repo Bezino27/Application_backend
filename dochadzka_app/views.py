@@ -2405,15 +2405,16 @@ def payment_qr(request, payment_type, pk):
         amount = float(payment.amount)
         message = f"Objednávka #{payment.order.id}"
         date = None
-
-    # 🔥 Rozlíšenie medzi klasickou objednávkou a jersey objednávkou
-        if payment.order:
-            message = f"Objednávka #{payment.order.id}"
-        elif payment.jersey_order:
-            message = f"Dresová objednávka #{payment.jersey_order.id}"
-        else:
-            message = "Objednávka"
+    
+    elif payment_type == "jersey_order":
+        payment = get_object_or_404(JerseyOrder, pk=pk)
+        iban = payment.iban
+        vs = payment.variable_symbol
+        amount = float(payment.amount)
+        message = f"Objednávka dresov #{payment.order.id}"
         date = None
+
+    
 
     else:
         return HttpResponse("Neplatný typ platby", status=400)
