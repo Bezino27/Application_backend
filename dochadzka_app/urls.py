@@ -17,7 +17,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     set_preferred_role, club_payment_settings_list, member_payments, create_member_payments, payment_qr,
                     update_member_payment, remind_attendance_view, remind_match_attendance_view, orders_payments,generate_payment,
                     admin_member_payments_summary, new_members_without_payments,cancel_order_item_view, order_delete_view, create_jersey_order,
-                    check_number, jersey_orders_list)
+                    check_number, jersey_orders_list, jersey_order_delete_view, jersey_orders_bulk_update, generate_jersey_payment)
 
 urlpatterns = [
     path('me/', me_view, name='me'),
@@ -95,6 +95,9 @@ urlpatterns = [
     path("clubs/<int:club_id>/check-number/<int:number>/", check_number, name="check_number"),
     path("orders/jersey/", create_jersey_order, name="create_jersey_order"),
     path("clubs/<int:club_id>/jersey-orders/", jersey_orders_list, name="jersey_orders_list"),
+    path("jersey-orders/bulk-update/", jersey_orders_bulk_update),
+    path("jersey-orders/<int:order_id>/delete/", jersey_order_delete_view),
+    path("jersey-orders/<int:order_id>/generate-payment/", generate_jersey_payment, name="generate_jersey_payment"),
 
 
 

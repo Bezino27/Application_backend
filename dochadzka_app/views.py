@@ -2633,3 +2633,77 @@ def jersey_orders_list(request, club_id: int):
     from .serializers import JerseyOrderSerializer
     serializer = JerseyOrderSerializer(orders, many=True)
     return Response(serializer.data)
+
+
+
+# views.py
+from .models import JerseyOrder
+from .serializers import JerseyOrderSerializer
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def jersey_order_delete_view(request, order_id: int):
+    order = get_object_or_404(JerseyOrder, pk=order_id)
+
+    if not request.user.roles.filter(role="admin").exists():
+        return Response({"detail": "Nemáš oprávnenie zmazať túto objednávku."}, status=403)
+
+    order.delete()
+    return Response({"detail": f"Objednávka dresu {order_id} bola vymazaná."}, status=204)
+
+
+@api_view(["PUT"])
+@permission_classes([IsAuthenticated])
+def jersey_orders_bulk_update(request):
+    """
+    Aktualizuje viac objednávok dresov naraz.
+    Očakáva list objektov: [{id, is_paid}, ...]
+    """
+    data = request.data
+    if not isinstance(data, list):
+        return Response({"detail": "Očakáva sa zoznam objednávok"}, status=400)
+
+    updated = []
+    for entry in data:
+        order = get_object_or_404(JerseyOrder, pk=entry.get("id"))
+        serializer = JerseyOrderSerializer(order, data=entry, partial=True)
+        if serializer.is_valid():
+            updated.append(serializer.save())
+        else:
+            return Response(serializer.errors, status=400)
+
+    return Response(JerseyOrderSerializer(updated, many=True).data)
+
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def generate_jersey_payment(request, order_id):
+    order = get_object_or_404(JerseyOrder, id=order_id)
+
+    if not getattr(request.user, "iban", None):
+        return Response({"error": "Nemáš nastavený IBAN v profile"}, status=400)
+
+    from .models import OrderPayment
+    payment, created = OrderPayment.objects.get_or_create(
+        jersey_order=order,
+        defaults={
+            "user": request.user,
+            "iban": request.user.iban,
+            "variable_symbol": f"J{order.id}",
+            "amount": order.amount,
+            "is_paid": order.is_paid,
+        },
+    )
+
+    if not created:
+        payment.iban = request.user.iban
+        payment.amount = order.amount
+        payment.save()
+
+    return Response({
+        "vs": payment.variable_symbol,
+        "iban": payment.iban,
+        "amount": str(payment.amount),
+        "is_paid": payment.is_paid,
+    })

@@ -321,3 +321,5 @@ class JerseyOrder(models.Model):
     shorts_size = models.CharField(max_length=5, choices=[(s, s) for s in ["XXS", "XS", "S", "M", "L", "XL", "XXL"]])
     number = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
+    amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    is_paid = models.BooleanField(default=False)
