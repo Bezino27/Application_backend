@@ -906,7 +906,7 @@ from .models import Match, MatchParticipation
 from itertools import chain
 from operator import attrgetter
 
-@api_view(['GET', 'POST'])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def player_matches_view(request):
     user = request.user
@@ -927,7 +927,15 @@ def player_matches_view(request):
         sorted_matches = sorted(unique_matches, key=attrgetter('date'), reverse=True)
 
         serializer = MatchSerializer(sorted_matches, many=True, context={'request': request})
-        return Response(serializer.data)
+
+        # ⬅️ pridáme info o locknutí
+        club = user.club  # ak má user priamo FK na club
+        vote_lock_days = getattr(club, "vote_lock_days", 2)
+
+        return Response({
+            "matches": serializer.data,
+            "vote_lock_days": vote_lock_days
+        })
 
     except Exception as e:
         import traceback

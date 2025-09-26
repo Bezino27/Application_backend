@@ -5,7 +5,7 @@ from django.conf import settings
 class Club(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-
+    vote_lock_days = models.PositiveIntegerField(default=2)  
     address = models.CharField(max_length=255, blank=True, null=True)
     location_lat = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     location_lng = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
