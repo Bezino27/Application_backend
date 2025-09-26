@@ -2919,3 +2919,23 @@ def set_vote_lock_days(request):
     club.vote_lock_days = days
     club.save()
     return Response({"vote_lock_days": club.vote_lock_days})
+
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def set_training_lock_hours(request):
+    user = request.user
+    if not user.roles.filter(role="admin").exists():
+        return Response({"error": "Unauthorized"}, status=403)
+
+    try:
+        hours = int(request.data.get("training_lock_hours"))
+    except (TypeError, ValueError):
+        return Response({"error": "Neplatná hodnota"}, status=400)
+
+    club = user.club
+    club.training_lock_hours = hours
+    club.save()
+
+    return Response({"training_lock_hours": club.training_lock_hours})

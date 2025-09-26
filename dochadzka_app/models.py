@@ -5,7 +5,8 @@ from django.conf import settings
 class Club(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    vote_lock_days = models.PositiveIntegerField(default=2)  
+    vote_lock_days = models.PositiveIntegerField(default=2)
+    training_lock_hours = models.IntegerField(default=2)  
     address = models.CharField(max_length=255, blank=True, null=True)
     location_lat = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     location_lng = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
@@ -71,7 +72,7 @@ class Training(models.Model):
     description = models.TextField(blank=True)
     location = models.CharField(max_length=255)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-
+    
     def __str__(self):
         return f"Tréning {self.category.name} - {self.date.strftime('%Y-%m-%d %H:%M')}"
 
