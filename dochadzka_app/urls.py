@@ -100,7 +100,7 @@ urlpatterns = [
     path("jersey-orders/<int:order_id>/generate-payment/", generate_jersey_payment, name="generate_jersey_payment"),
     path("orders_ludimus/", create_order, name="create_order"),
     path("delete-user-from-club/<int:user_id>/", delete_user_from_club, name="delete-user-from-club"),
-    path("categories-in-club/", categories_admin, name="categories-in-club"),
+    path("categories-admin/", categories_admin, name="categories-admin"),
     path("delete-category/<int:category_id>/", delete_category, name="delete-category"),
 
 
