@@ -1585,6 +1585,8 @@ def coach_attendance_summary(request):
     return Response(result)
 
 
+from datetime import date, datetime
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def player_attendance_detail(request, player_id):
@@ -1597,13 +1599,26 @@ def player_attendance_detail(request, player_id):
     except User.DoesNotExist:
         return Response({'error': 'Player not found'}, status=404)
 
-    # nájdi kategórie hráča
+    # kategórie hráča
     player_categories = player.roles.filter(role='player')
     player_category_ids = set(player_categories.values_list('category__id', flat=True))
 
-    # over, že tréner má aspoň jednu spoločnú kategóriu s hráčom
+    # overenie oprávnenia
     if not coach_category_ids.intersection(player_category_ids):
         return Response({'error': 'Unauthorized'}, status=403)
+
+    # 🔥 query params pre filter
+    month = request.GET.get('month')   # napr. "0-11"
+    season = request.GET.get('season') # napr. "2024/2025"
+
+    season_start, season_end = None, None
+    if season:
+        try:
+            start_year = int(season.split('/')[0])
+            season_start = date(start_year, 6, 1)           # 1. jún
+            season_end = date(start_year + 1, 5, 31)        # 31. máj
+        except Exception:
+            pass
 
     response_data = {
         "player_id": player.id,
@@ -1617,7 +1632,7 @@ def player_attendance_detail(request, player_id):
         "side": player.side,
         "position": player.position.name if player.position else None,
         "categories": [],
-        "trainings": []   # 🔥 nové pole
+        "trainings": []
     }
 
     # pre každú kategóriu hráča, kde tréner má prístup
@@ -1626,10 +1641,21 @@ def player_attendance_detail(request, player_id):
         if category.id not in coach_category_ids:
             continue
 
-        trainings = Training.objects.filter(category=category).order_by('-date')
+        trainings = Training.objects.filter(category=category)
+
+        # aplikuj filter sezóna
+        if season_start and season_end:
+            trainings = trainings.filter(date__range=(season_start, season_end))
+
+        # aplikuj filter mesiac
+        if month is not None and month.isdigit():
+            trainings = trainings.filter(date__month=int(month) + 1)  # Django 1-12
+
+        trainings = trainings.order_by('-date')
+
         total = trainings.count()
-        present = TrainingAttendance.objects.filter(user=player, training__category=category, status='present').count()
-        absent = TrainingAttendance.objects.filter(user=player, training__category=category, status='absent').count()
+        present = TrainingAttendance.objects.filter(user=player, training__in=trainings, status='present').count()
+        absent = TrainingAttendance.objects.filter(user=player, training__in=trainings, status='absent').count()
         unknown = total - present - absent
 
         if total == 0:
@@ -1647,7 +1673,7 @@ def player_attendance_detail(request, player_id):
             'percentage': percent
         })
 
-        # 🔥 pridáme detailný zoznam tréningov
+        # detail tréningov
         for tr in trainings:
             try:
                 attendance = TrainingAttendance.objects.get(user=player, training=tr)
@@ -1667,7 +1693,6 @@ def player_attendance_detail(request, player_id):
             })
 
     return Response(response_data)
-
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
