@@ -906,6 +906,41 @@ from .models import Match, MatchParticipation
 from itertools import chain
 from operator import attrgetter
 
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def player_matches_view(request):
+    user = request.user
+    try:
+        # všetky kategórie, kde má user rolu hráča
+        categories = user.roles.filter(role='player').values_list('category_id', flat=True)
+
+        # zápasy z aktuálnych kategórií
+        matches = Match.objects.filter(category_id__in=categories)
+
+        # zápasy, kde má user zaznamenanú účasť
+        participations = MatchParticipation.objects.filter(user=user).select_related('match')
+        participated_matches = Match.objects.filter(
+            id__in=participations.values_list('match_id', flat=True)
+        )
+
+        # spojíme a odstránime duplicity
+        combined = list(chain(matches, participated_matches))
+        unique_matches_dict = {match.id: match for match in combined}
+        unique_matches = list(unique_matches_dict.values())
+
+        # zoradenie podľa dátumu (novšie prvé)
+        sorted_matches = sorted(unique_matches, key=attrgetter('date'), reverse=True)
+
+        serializer = MatchSerializer(sorted_matches, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=500)
+
+
+"""
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def player_matches_view(request):
@@ -941,6 +976,7 @@ def player_matches_view(request):
         import traceback
         traceback.print_exc()
         return Response({"error": str(e)}, status=500)
+"""
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
