@@ -7,7 +7,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     set_training_attendance, list_clubs, test_push, create_training_view, user_categories_view,
                     training_detail_view, coach_trainings_view, change_password_view, chat_messages_view,
                     users_in_club, assign_role, remove_role, categories_in_club, coach_players_view,
-                    training_update_view, club_detail, coach_attendance_summary, update_match_view,
+                    training_update_view, club_detail, coach_attendance_summary, update_match_view, categories_admin, delete_category,
                     all_players_with_roles, player_trainings_history_view, positions_list, player_matches_view,
                     create_match_participation, create_match_view, jersey_numbers_view, club_documents_view,
                     upload_document, match_delete_view, assign_players_to_category, match_stats_view, match_detail_view,
@@ -100,7 +100,8 @@ urlpatterns = [
     path("jersey-orders/<int:order_id>/generate-payment/", generate_jersey_payment, name="generate_jersey_payment"),
     path("orders_ludimus/", create_order, name="create_order"),
     path("delete-user-from-club/<int:user_id>/", delete_user_from_club, name="delete-user-from-club"),
-
+    path("categories-in-club/", categories_admin, name="categories-in-club"),
+    path("delete-category/<int:category_id>/", delete_category, name="delete-category"),
 
 
 

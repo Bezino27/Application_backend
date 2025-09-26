@@ -2797,3 +2797,50 @@ def delete_user_from_club(request, user_id: int):
 
     except Exception as e:
         return Response({"detail": f"Chyba pri mazaní: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# views.py
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from dochadzka_app.models import Category, Training
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def categories_admin(request):
+    """
+    GET → vráti zoznam kategórií klubu
+    POST → vytvorí novú kategóriu v klube
+    """
+    user = request.user
+    club = user.club
+
+    if request.method == "GET":
+        categories = Category.objects.filter(club=club).values("id", "name", "description")
+        return Response(categories)
+
+    if request.method == "POST":
+        name = request.data.get("name")
+        description = request.data.get("description", "")
+        if not name:
+            return Response({"detail": "Meno kategórie je povinné."}, status=400)
+
+        category = Category.objects.create(club=club, name=name, description=description)
+        return Response({"id": category.id, "name": category.name, "description": category.description}, status=201)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_category(request, category_id: int):
+    """
+    Vymaže kategóriu a všetky tréningy v nej
+    """
+    user = request.user
+    category = get_object_or_404(Category, pk=category_id, club=user.club)
+
+    # pri zmazaní sa cascaduju aj tréningy
+    category.delete()
+
+    return Response({"detail": "Kategória a jej tréningy boli vymazané."}, status=204)
