@@ -2898,3 +2898,24 @@ def delete_category(request, category_id: int):
     category.delete()
 
     return Response({"detail": "Kategória a jej tréningy boli vymazané."}, status=204)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def set_vote_lock_days(request):
+    user = request.user
+    if not user.roles.filter(role="admin").exists():
+        return Response({"detail": "Nemáš oprávnenie."}, status=403)
+
+    days = request.data.get("vote_lock_days")
+    try:
+        days = int(days)
+        if days < 0 or days > 30:
+            return Response({"detail": "Neplatný rozsah (0–30 dní)"}, status=400)
+    except:
+        return Response({"detail": "Neplatná hodnota"}, status=400)
+
+    club = user.club
+    club.vote_lock_days = days
+    club.save()
+    return Response({"vote_lock_days": club.vote_lock_days})

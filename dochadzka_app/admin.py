@@ -63,8 +63,8 @@ class ClubPaymentSettings(admin.ModelAdmin):
 
 @admin.register(Club)
 class ClubAdmin(admin.ModelAdmin):
-    list_display = ('name', 'address', 'phone', 'email', 'contact_person', 'iban')
-    search_fields = ('name', 'address', 'phone', 'email', 'contact_person', 'iban')
+    list_display = ('name', 'address', 'phone', 'email', 'contact_person', 'iban', 'vote_lock_days')
+    search_fields = ('name', 'address', 'phone', 'email', 'contact_person', 'iban', 'vote_lock_days')
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):

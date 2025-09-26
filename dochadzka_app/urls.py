@@ -14,7 +14,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     match_nominations_view, player_nominated_matches_view, admin_member_payments,
                     match_participation_view, club_payment_settings_detail,club_orders_view, orders_bulk_update,
                     upload_pdf_statement_chatgpt,OrderCreateView, MyOrdersListView, order_update_view,delete_user_from_club,
-                    set_preferred_role, club_payment_settings_list, member_payments, create_member_payments, payment_qr,
+                    set_preferred_role, club_payment_settings_list, member_payments, create_member_payments, payment_qr, set_vote_lock_days,
                     update_member_payment, remind_attendance_view, remind_match_attendance_view, orders_payments,generate_payment,
                     admin_member_payments_summary, new_members_without_payments,cancel_order_item_view, order_delete_view, create_jersey_order,
                     check_number, jersey_orders_list, jersey_order_delete_view, jersey_orders_bulk_update, generate_jersey_payment, create_order)
@@ -102,6 +102,7 @@ urlpatterns = [
     path("delete-user-from-club/<int:user_id>/", delete_user_from_club, name="delete-user-from-club"),
     path("categories-admin/", categories_admin, name="categories-admin"),
     path("delete-category/<int:category_id>/", delete_category, name="delete-category"),
+    path("set-vote-lock-days/", set_vote_lock_days, name="set_vote_lock_days"),
 
 
 
