@@ -2773,3 +2773,27 @@ def create_order(request):
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_user_from_club(request, user_id: int):
+    """
+    Vymaže používateľa z klubu (iba admin).
+    """
+    try:
+        user_to_delete = get_object_or_404(User, pk=user_id)
+
+        # kontrola – musí byť v rovnakom klube
+        if not request.user.roles.filter(role="admin").exists():
+            return Response({"detail": "Nemáš oprávnenie vymazať používateľov."}, status=status.HTTP_403_FORBIDDEN)
+
+        if user_to_delete.club_id != request.user.club_id:
+            return Response({"detail": "Používateľ nepatrí do tvojho klubu."}, status=status.HTTP_403_FORBIDDEN)
+
+        user_to_delete.delete()
+        return Response({"detail": f"Používateľ {user_to_delete.username} bol vymazaný."}, status=status.HTTP_204_NO_CONTENT)
+
+    except Exception as e:
+        return Response({"detail": f"Chyba pri mazaní: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)

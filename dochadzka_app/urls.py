@@ -13,7 +13,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     upload_document, match_delete_view, assign_players_to_category, match_stats_view, match_detail_view,
                     match_nominations_view, player_nominated_matches_view, admin_member_payments,
                     match_participation_view, club_payment_settings_detail,club_orders_view, orders_bulk_update,
-                    upload_pdf_statement_chatgpt,OrderCreateView, MyOrdersListView, order_update_view,
+                    upload_pdf_statement_chatgpt,OrderCreateView, MyOrdersListView, order_update_view,delete_user_from_club,
                     set_preferred_role, club_payment_settings_list, member_payments, create_member_payments, payment_qr,
                     update_member_payment, remind_attendance_view, remind_match_attendance_view, orders_payments,generate_payment,
                     admin_member_payments_summary, new_members_without_payments,cancel_order_item_view, order_delete_view, create_jersey_order,
@@ -99,6 +99,7 @@ urlpatterns = [
     path("jersey-orders/<int:order_id>/delete/", jersey_order_delete_view),
     path("jersey-orders/<int:order_id>/generate-payment/", generate_jersey_payment, name="generate_jersey_payment"),
     path("orders_ludimus/", create_order, name="create_order"),
+    path("delete-user-from-club/<int:user_id>/", delete_user_from_club, name="delete-user-from-club"),
 
 
 
