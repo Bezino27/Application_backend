@@ -1616,10 +1616,11 @@ def player_attendance_detail(request, player_id):
         "weight": player.weight,
         "side": player.side,
         "position": player.position.name if player.position else None,
-        "categories": []
+        "categories": [],
+        "trainings": []   # 🔥 nové pole
     }
 
-    # pre každú kategóriu hráča, kde tréner má zároveň prístup
+    # pre každú kategóriu hráča, kde tréner má prístup
     for role in player_categories:
         category = role.category
         if category.id not in coach_category_ids:
@@ -1646,7 +1647,27 @@ def player_attendance_detail(request, player_id):
             'percentage': percent
         })
 
+        # 🔥 pridáme detailný zoznam tréningov
+        for tr in trainings:
+            try:
+                attendance = TrainingAttendance.objects.get(user=player, training=tr)
+                status = attendance.status
+            except TrainingAttendance.DoesNotExist:
+                status = "unknown"
+
+            response_data['trainings'].append({
+                "id": tr.id,
+                "date": tr.date.strftime("%Y-%m-%d"),
+                "time": tr.date.strftime("%H:%M"),
+                "location": tr.location,
+                "category": category.name,
+                "status": status,
+                "players_present": TrainingAttendance.objects.filter(training=tr, status="present").count(),
+                "players_total": TrainingAttendance.objects.filter(training=tr).count(),
+            })
+
     return Response(response_data)
+
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
