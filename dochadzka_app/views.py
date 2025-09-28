@@ -905,7 +905,7 @@ from .models import Match, MatchParticipation
 
 from itertools import chain
 from operator import attrgetter
-
+"""
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def player_matches_view(request):
@@ -976,7 +976,7 @@ def player_matches_view(request):
         import traceback
         traceback.print_exc()
         return Response({"error": str(e)}, status=500)
-"""
+
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
