@@ -2316,20 +2316,26 @@ from django.shortcuts import get_object_or_404
 
 from rest_framework import status as http_status
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status as http_status
+from rest_framework.response import Response
+
+from .models import Order
+from .serializers import ClubOrderReadSerializer
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])  # v produkcii nahraď vlastnou IsClubAdmin
 def club_orders_view(request, club_id: int):
     """
-    GET /api/club-orders/<club_id>/?status=Nová|Spracováva sa|Objednaná|Doručená|Zrušená
+    GET /api/club-orders/<club_id>/?status=Nová
+    GET /api/club-orders/<club_id>/?status__in=Nová,Spracováva sa,Objednaná
     """
     # ✅ kontrola, či má user prístup do tohto klubu
     if not request.user.is_superuser:
-        # ak máš user.club (napr. ForeignKey), tak:
         if getattr(request.user, "club_id", None) != club_id:
             return Response({"detail": "Forbidden"}, status=http_status.HTTP_403_FORBIDDEN)
-        # alebo ak máš custom pole s viacerými klubmi (napr. admin_club_ids):
-        # if club_id not in getattr(request.user, "admin_club_ids", []):
-        #     return Response({"detail": "Forbidden"}, status=http_status.HTTP_403_FORBIDDEN)
 
     qs = (
         Order.objects.filter(club_id=club_id)
@@ -2338,12 +2344,21 @@ def club_orders_view(request, club_id: int):
         .order_by("-created_at")
     )
 
+    # 1) ak je zadaný konkrétny status
     status_param = request.query_params.get("status")
     if status_param:
         qs = qs.filter(status=status_param)
 
+    # 2) ak je zadané viac statusov
+    status_in_param = request.query_params.get("status__in")
+    if status_in_param:
+        statuses = [s.strip() for s in status_in_param.split(",") if s.strip()]
+        if statuses:
+            qs = qs.filter(status__in=statuses)
+
     ser = ClubOrderReadSerializer(qs, many=True)
     return Response(ser.data, status=http_status.HTTP_200_OK)
+
 
 # views.py
 from rest_framework.decorators import api_view, permission_classes
