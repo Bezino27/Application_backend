@@ -628,9 +628,10 @@ class OrderLudimusSerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 from .models import Announcement, AnnouncementRead
 class AnnouncementSerializer(serializers.ModelSerializer):
-    created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    created_by_name = serializers.SerializerMethodField()
     club_name = serializers.CharField(source="club.name", read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
+    read_at = serializers.SerializerMethodField()
 
     class Meta:
         model = Announcement
@@ -639,8 +640,21 @@ class AnnouncementSerializer(serializers.ModelSerializer):
             "club", "club_name",
             "category", "category_name",
             "date_created", "created_by", "created_by_name",
+            "read_at",
         ]
-        read_only_fields = ["club", "created_by"]   # 🔑 dôležité
+        read_only_fields = ["club", "created_by"]
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip() or obj.created_by.username
+        return None
+
+    def get_read_at(self, obj):
+        user = self.context.get("request").user
+        if not user or not user.is_authenticated:
+            return None
+        read = obj.reads.filter(user=user).first()  # AnnouncementRead model
+        return read.read_at if read else None
 
 
 class AnnouncementReadSerializer(serializers.ModelSerializer):
