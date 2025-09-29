@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY", "nebezpecny-default")
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 CSRF_TRUSTED_ORIGINS = [
     "https://web-databaseurl-5e2d.up.railway.app",
 ]
@@ -142,22 +142,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'dochadzka_backend.wsgi.application'
-if DEBUG:
-    LOGGING = {
-        'version': 1,
-        'disable_existing_loggers': False,
-        'handlers': {
-            'console': {
-                'class': 'logging.StreamHandler',
-            },
-        },
-        'loggers': {
-            'django.db.backends': {
-                'level': 'DEBUG',
-                'handlers': ['console'],
-            },
-        },
-    }
+
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
