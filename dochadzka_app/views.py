@@ -3118,7 +3118,7 @@ def announcement_readers(request, pk):
 @permission_classes([IsAuthenticated])
 def announcements_admin_list(request):
     """
-    Admin endpoint – vráti všetky oznamy v klube (bez ohľadu na kategóriu).
+    Admin endpoint – všetky oznamy pre klub s počtom prečítaných a celkovým počtom cieľových používateľov.
     """
     user = request.user
     if not user.club:
@@ -3132,12 +3132,25 @@ def announcements_admin_list(request):
         .order_by("-date_created")
     )
 
-    total_count = user.club.users.count()
+    data = []
+    for ann in qs:
+        # 🔑 používateľov rátame podľa cieľa
+        if ann.categories.exists():
+            total_count = (
+                request.user.club.users.filter(roles__category__in=ann.categories.all())
+                .distinct()
+                .count()
+            )
+        else:
+            total_count = request.user.club.users.count()
 
-    serializer = AnnouncementSerializer(
-        qs, many=True, context={"request": request, "total_count": total_count}
-    )
-    return Response(serializer.data)
+        data.append(
+            AnnouncementSerializer(
+                ann, context={"request": request, "total_count": total_count}
+            ).data
+        )
+
+    return Response(data)
 
 
 @api_view(["GET"])
