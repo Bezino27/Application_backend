@@ -363,16 +363,9 @@ class Order_Ludimus(models.Model):
 # models.py
 
 class AnnouncementRead(models.Model):
-    announcement = models.ForeignKey(
-        Announcement, on_delete=models.CASCADE, related_name='reads'
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='announcement_reads'
-    )
+    announcement = models.ForeignKey(Announcement, related_name="reads", on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     read_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('announcement', 'user')
-
-    def __str__(self):
-        return f"{self.user.username} read {self.announcement.title}"
+        unique_together = ("announcement", "user")

@@ -3021,7 +3021,7 @@ def announcements_list(request):
         if user_category_ids:
             qs = qs.filter(Q(category__in=user_category_ids) | Q(category=None))
 
-    serializer = AnnouncementSerializer(qs, many=True)
+    serializer = AnnouncementSerializer(qs, many=True, context={"request": request})
     return Response(serializer.data)
 
 
@@ -3035,21 +3035,21 @@ def create_announcement(request):
     if not user.club_id:
         return Response({"detail": "Používateľ nemá priradený klub"}, status=400)
 
-    serializer = AnnouncementSerializer(data=request.data)
+    serializer = AnnouncementSerializer(data=request.data, context={"request": request})
     if serializer.is_valid():
         announcement = serializer.save(
             created_by=user,
             club=user.club   # 🔑 nastavíme explicitne klub
         )
         return Response(
-            AnnouncementSerializer(announcement).data,
+            AnnouncementSerializer(announcement, context={"request": request}).data,
             status=status.HTTP_201_CREATED
         )
     else:
         print("❌ Serializer errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def mark_announcement_read(request, pk):
@@ -3063,5 +3063,5 @@ def mark_announcement_read(request, pk):
         return Response({"detail": "Oznam neexistuje"}, status=404)
 
     read, created = AnnouncementRead.objects.get_or_create(user=user, announcement=announcement)
-    serializer = AnnouncementReadSerializer(read)
+    serializer = AnnouncementReadSerializer(read, context={"request": request})
     return Response(serializer.data)
