@@ -109,11 +109,15 @@ class MatchParticipationAdmin(admin.ModelAdmin):
 
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin):
-    list_display = ('title', 'club', 'category', 'date_created')
-    list_filter = ('club', 'category')
+    list_display = ('title', 'club', 'get_categories', 'date_created')
+    list_filter = ('club', 'categories')
     search_fields = ('title', 'content')
     date_hierarchy = 'date_created'
 
+    def get_categories(self, obj):
+        return ", ".join([c.name for c in obj.categories.all()])
+    get_categories.short_description = "Kategórie"
+    
 from django.contrib import admin
 from .models import ClubDocument
 

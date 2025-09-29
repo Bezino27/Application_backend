@@ -136,8 +136,8 @@ class Announcement(models.Model):
     club = models.ForeignKey(
         Club, on_delete=models.CASCADE, related_name='announcements'
     )
-    category = models.ForeignKey(
-        Category, null=True, blank=True, on_delete=models.CASCADE, related_name='announcements'
+    categories = models.ManyToManyField(
+        Category, blank=True, related_name='announcements'
     )
     title = models.CharField(max_length=200)
     content = models.TextField()
@@ -150,9 +150,11 @@ class Announcement(models.Model):
     )
 
     def __str__(self):
-        scope = self.category.name if self.category else self.club.name
-        return f"Oznámenie pre {scope} - {self.title}"
-
+        if self.categories.exists():
+            return f"Oznámenie pre {', '.join([c.name for c in self.categories.all()])} - {self.title}"
+        return f"Oznámenie pre {self.club.name} - {self.title}"
+    
+    
 from django.conf import settings  # ← dôležité
 from django.db import models
 

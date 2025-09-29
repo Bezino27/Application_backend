@@ -3022,17 +3022,18 @@ def announcements_list(request):
     # základný queryset
     qs = (
         Announcement.objects.filter(club=user.club)
-        .annotate(read_count=Count("reads", distinct=True))  # 🔑 spočítame prečítania na DB úrovni
-        .select_related("club", "category", "created_by")    # 🔑 aby sa neťahalo extra
+        .annotate(read_count=Count("reads", distinct=True))
+        .select_related("club", "created_by")
+        .prefetch_related("categories")  # 🔑 pridaj prefetch na M2M
         .order_by("-date_created")
     )
 
-    # filter podľa kategórií
     if hasattr(user, "roles"):
         user_category_ids = list(user.roles.values_list("category_id", flat=True))
         if user_category_ids:
-            qs = qs.filter(Q(category__in=user_category_ids) | Q(category=None))
-
+            qs = qs.filter(
+                Q(categories__in=user_category_ids) | Q(categories=None)
+            ).distinct()
     # počet userov v klube vyrátame raz
     total_count = user.club.users.count()
 
@@ -3050,6 +3051,7 @@ def create_announcement(request):
     if not user.club_id:
         return Response({"detail": "Používateľ nemá priradený klub"}, status=400)
 
+    
     serializer = AnnouncementSerializer(data=request.data, context={"request": request})
     if serializer.is_valid():
         announcement = serializer.save(

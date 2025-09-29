@@ -630,7 +630,10 @@ from .models import Announcement, AnnouncementRead, User  # 🔑 pridaj User
 class AnnouncementSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
     club_name = serializers.CharField(source="club.name", read_only=True)
-    category_name = serializers.CharField(source="category.name", read_only=True)
+    categories = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), many=True, required=False
+    )
+    categories_detail = serializers.SerializerMethodField()
     read_at = serializers.SerializerMethodField()
     read_count = serializers.IntegerField(read_only=True)  # už je zannotované
     total_count = serializers.SerializerMethodField()
@@ -640,7 +643,7 @@ class AnnouncementSerializer(serializers.ModelSerializer):
         fields = [
             "id", "title", "content",
             "club", "club_name",
-            "category", "category_name",
+            "categories", "categories_detail",
             "date_created", "created_by", "created_by_name",
             "read_at", "read_count", "total_count",
         ]
@@ -660,6 +663,9 @@ class AnnouncementSerializer(serializers.ModelSerializer):
 
     def get_total_count(self, obj):
         return self.context.get("total_count", 0)
+
+    def get_categories_detail(self, obj):
+        return [{"id": c.id, "name": c.name} for c in obj.categories.all()]
 
 
 
