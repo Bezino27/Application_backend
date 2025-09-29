@@ -632,7 +632,7 @@ class AnnouncementSerializer(serializers.ModelSerializer):
     club_name = serializers.CharField(source="club.name", read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
     read_at = serializers.SerializerMethodField()
-    read_count = serializers.SerializerMethodField()
+    read_count = serializers.IntegerField(read_only=True)  # už je zannotované
     total_count = serializers.SerializerMethodField()
 
     class Meta:
@@ -642,30 +642,24 @@ class AnnouncementSerializer(serializers.ModelSerializer):
             "club", "club_name",
             "category", "category_name",
             "date_created", "created_by", "created_by_name",
-            "read_at", "read_count", "total_count",  # 🔑 doplnené
+            "read_at", "read_count", "total_count",
         ]
         read_only_fields = ["club", "created_by"]
 
     def get_created_by_name(self, obj):
         if obj.created_by:
-            return (
-                f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
-                or obj.created_by.username
-            )
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip() or obj.created_by.username
         return None
 
     def get_read_at(self, obj):
         request = self.context.get("request")
-        if not request or not request.user.is_authenticated:
+        if not request or not hasattr(request, "user"):
             return None
         read = obj.reads.filter(user=request.user).first()
         return read.read_at if read else None
 
-    def get_read_count(self, obj):
-        return obj.reads.count()
-
     def get_total_count(self, obj):
-        return User.objects.filter(club=obj.club).count()
+        return self.context.get("total_count", 0)
 
 
 

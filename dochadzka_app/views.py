@@ -3003,28 +3003,43 @@ from django.db.models import Q
 from .models import Announcement, AnnouncementRead
 from .serializers import AnnouncementSerializer, AnnouncementReadSerializer
 
+from django.db.models import Count, Q
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def announcements_list(request):
     """
     Vráti všetky oznamy pre klub používateľa + podľa jeho kategórie (ak má).
+    Optimalizované: počty sa rátajú na úrovni DB.
     """
     user = request.user
     if not user.club:
         return Response({"detail": "Používateľ nemá klub"}, status=400)
 
-    qs = Announcement.objects.filter(club=user.club).order_by("-date_created")
+    # základný queryset
+    qs = (
+        Announcement.objects.filter(club=user.club)
+        .annotate(read_count=Count("reads", distinct=True))  # 🔑 spočítame prečítania na DB úrovni
+        .select_related("club", "category", "created_by")    # 🔑 aby sa neťahalo extra
+        .order_by("-date_created")
+    )
 
-    # Ak má user kategóriu → filtrovať podľa nej
+    # filter podľa kategórií
     if hasattr(user, "roles"):
-        user_category_ids = user.roles.values_list("category_id", flat=True)
+        user_category_ids = list(user.roles.values_list("category_id", flat=True))
         if user_category_ids:
             qs = qs.filter(Q(category__in=user_category_ids) | Q(category=None))
 
-    serializer = AnnouncementSerializer(qs, many=True, context={"request": request})
+    # počet userov v klube vyrátame raz
+    total_count = user.club.users.count()
+
+    serializer = AnnouncementSerializer(
+        qs, many=True, context={"request": request, "total_count": total_count}
+    )
     return Response(serializer.data)
-
-
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_announcement(request):
@@ -3054,7 +3069,7 @@ def create_announcement(request):
 @permission_classes([IsAuthenticated])
 def mark_announcement_read(request, pk):
     """
-    Označí oznam ako prečítaný.
+    Označí oznam ako prečítaný (uloží alebo updatuje read_at).
     """
     user = request.user
     try:
@@ -3062,22 +3077,36 @@ def mark_announcement_read(request, pk):
     except Announcement.DoesNotExist:
         return Response({"detail": "Oznam neexistuje"}, status=404)
 
-    read, created = AnnouncementRead.objects.get_or_create(user=user, announcement=announcement)
-    serializer = AnnouncementReadSerializer(read, context={"request": request})
-    return Response(serializer.data)
-
+    read, created = AnnouncementRead.objects.update_or_create(
+        user=user, announcement=announcement,
+        defaults={"read_at": timezone.now()}
+    )
+    return Response(AnnouncementReadSerializer(read).data)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def announcement_readers(request, pk):
-    ann = get_object_or_404(Announcement, pk=pk, club=request.user.club)
-    users = User.objects.filter(club=ann.club)
-    data = []
-    for u in users:
-        read = ann.reads.filter(user=u).first()
-        data.append({
+    """
+    Zoznam používateľov klubu + info kto kedy prečítal.
+    Optimalizované cez prefetch.
+    """
+    ann = get_object_or_404(
+        Announcement.objects.prefetch_related("reads__user"),
+        pk=pk, club=request.user.club
+    )
+
+    # všetci užívatelia v klube
+    users = ann.club.users.all().select_related("club")
+
+    # indexujeme reads podľa user.id aby to bolo O(1)
+    read_map = {r.user_id: r.read_at for r in ann.reads.all()}
+
+    data = [
+        {
             "id": u.id,
             "full_name": f"{u.first_name} {u.last_name}".strip() or u.username,
-            "read_at": read.read_at if read else None
-        })
+            "read_at": read_map.get(u.id),
+        }
+        for u in users
+    ]
     return Response(data)
