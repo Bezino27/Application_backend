@@ -5,7 +5,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     coach_players_attendance_view, coach_matches_view, player_attendance_detail,
                     get_categories, player_trainings_view, add_reaction, delete_training_view, training_attendance_view,
                     set_training_attendance, list_clubs, test_push, create_training_view, user_categories_view,
-                    training_detail_view, coach_trainings_view, change_password_view, chat_messages_view,
+                    training_detail_view, coach_trainings_view, change_password_view, chat_messages_view, announcement_admin_readers, announcements_admin_list,
                     users_in_club, assign_role, remove_role, categories_in_club, coach_players_view, mark_announcement_read, create_announcement, announcements_list,
                     training_update_view, club_detail, coach_attendance_summary, update_match_view, categories_admin, delete_category,
                     all_players_with_roles, player_trainings_history_view, positions_list, player_matches_view,
@@ -108,6 +108,8 @@ urlpatterns = [
     path("announcements/create/", create_announcement, name="create_announcement"),
     path("announcements/<int:pk>/read/", mark_announcement_read, name="mark_announcement_read"),
     path("announcements/<int:pk>/readers/", announcement_readers, name="announcement_readers"),
+    path("announcements-admin/", announcements_admin_list, name="announcements_admin_list"),
+    path("announcements-admin/<int:pk>/readers/", announcement_admin_readers, name="announcement_admin_readers"),
 
 
 

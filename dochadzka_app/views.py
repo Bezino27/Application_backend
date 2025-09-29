@@ -3112,3 +3112,60 @@ def announcement_readers(request, pk):
         for u in users
     ]
     return Response(data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def announcements_admin_list(request):
+    """
+    Admin endpoint – vráti všetky oznamy v klube (bez ohľadu na kategóriu).
+    """
+    user = request.user
+    if not user.club:
+        return Response({"detail": "Používateľ nemá klub"}, status=400)
+
+    qs = (
+        Announcement.objects.filter(club=user.club)
+        .annotate(read_count=Count("reads", distinct=True))
+        .select_related("club", "created_by")
+        .prefetch_related("categories")
+        .order_by("-date_created")
+    )
+
+    total_count = user.club.users.count()
+
+    serializer = AnnouncementSerializer(
+        qs, many=True, context={"request": request, "total_count": total_count}
+    )
+    return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def announcement_admin_readers(request, pk):
+    """
+    Admin endpoint – zoznam používateľov, ktorí mohli oznam vidieť,
+    a info kto kedy prečítal.
+    """
+    ann = get_object_or_404(
+        Announcement.objects.prefetch_related("reads__user", "categories"),
+        pk=pk, club=request.user.club
+    )
+
+    # ak oznam patrí konkrétnym kategóriám → obmedzíme
+    if ann.categories.exists():
+        users = ann.club.users.filter(roles__category__in=ann.categories.all()).distinct()
+    else:
+        users = ann.club.users.all()
+
+    read_map = {r.user_id: r.read_at for r in ann.reads.all()}
+
+    data = [
+        {
+            "id": u.id,
+            "full_name": f"{u.first_name} {u.last_name}".strip() or u.username,
+            "read_at": read_map.get(u.id),
+        }
+        for u in users
+    ]
+    return Response(data)
