@@ -3032,19 +3032,23 @@ def create_announcement(request):
     Vytvorí nový oznam – admin alebo tréner.
     """
     user = request.user
-    data = request.data.copy()
+    if not user.club_id:
+        return Response({"detail": "Používateľ nemá priradený klub"}, status=400)
 
-    if user.club_id:
-        data["club"] = user.club_id
+    data = request.data.copy()
+    data["club"] = user.club_id   # 🔑 vždy doplníme klub
 
     serializer = AnnouncementSerializer(data=data)
     if serializer.is_valid():
-        announcement = serializer.save(created_by=user)
+        announcement = serializer.save(created_by=user)  # uložíme kto ho vytvoril
         return Response(
             AnnouncementSerializer(announcement).data,
             status=status.HTTP_201_CREATED
         )
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    else:
+        print("❌ Serializer errors:", serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
