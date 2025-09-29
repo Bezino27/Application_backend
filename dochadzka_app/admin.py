@@ -11,7 +11,7 @@ from .models import (
     TrainingAttendance,
     Match,
     MatchParticipation,
-    Announcement, ExpoPushToken, Message, MessageReaction, MatchNomination, ClubPaymentSettings, MemberPayment,OrderPayment, JerseyOrder
+    Announcement,AnnouncementRead, ExpoPushToken, Message, MessageReaction, MatchNomination, ClubPaymentSettings, MemberPayment,OrderPayment, JerseyOrder
 )
 
 
@@ -158,6 +158,12 @@ class Order_Ludimus(admin.ModelAdmin):
     list_filter = ("plan", "processed", "created_at")
     search_fields = ("club_name", "first_name", "last_name", "email", "phone")
     ordering = ("-created_at",)
+
+
+@admin.register(AnnouncementRead)
+class AnnouncementReadAdmin(admin.ModelAdmin):
+    list_display = ("announcement", "user", "read_at")
+    list_filter = ("announcement__club", "read_at")
 
 
 from django.contrib import admin

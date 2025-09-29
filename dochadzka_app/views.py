@@ -2990,3 +2990,66 @@ def set_training_lock_hours(request):
     club.save()
 
     return Response({"training_lock_hours": club.training_lock_hours})
+
+
+
+# views.py
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.db.models import Q
+
+from .models import Announcement, AnnouncementRead
+from .serializers import AnnouncementSerializer, AnnouncementReadSerializer
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def announcements_list(request):
+    """
+    Vráti všetky oznamy pre klub používateľa + podľa jeho kategórie (ak má).
+    """
+    user = request.user
+    if not user.club:
+        return Response({"detail": "Používateľ nemá klub"}, status=400)
+
+    qs = Announcement.objects.filter(club=user.club).order_by("-date_created")
+
+    # Ak má user kategóriu → filtrovať podľa nej
+    if hasattr(user, "roles"):
+        user_category_ids = user.roles.values_list("category_id", flat=True)
+        if user_category_ids:
+            qs = qs.filter(Q(category__in=user_category_ids) | Q(category=None))
+
+    serializer = AnnouncementSerializer(qs, many=True)
+    return Response(serializer.data)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_announcement(request):
+    """
+    Vytvorí nový oznam – admin alebo tréner.
+    """
+    serializer = AnnouncementSerializer(data=request.data)
+    if serializer.is_valid():
+        announcement = serializer.save()
+        return Response(AnnouncementSerializer(announcement).data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def mark_announcement_read(request, pk):
+    """
+    Označí oznam ako prečítaný.
+    """
+    user = request.user
+    try:
+        announcement = Announcement.objects.get(pk=pk, club=user.club)
+    except Announcement.DoesNotExist:
+        return Response({"detail": "Oznam neexistuje"}, status=404)
+
+    read, created = AnnouncementRead.objects.get_or_create(user=user, announcement=announcement)
+    serializer = AnnouncementReadSerializer(read)
+    return Response(serializer.data)
