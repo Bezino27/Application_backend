@@ -12,7 +12,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     create_match_participation, create_match_view, jersey_numbers_view, club_documents_view,
                     upload_document, match_delete_view, assign_players_to_category, match_stats_view, match_detail_view,
                     match_nominations_view, player_nominated_matches_view, admin_member_payments, set_training_lock_hours,
-                    match_participation_view, club_payment_settings_detail,club_orders_view, orders_bulk_update,
+                    match_participation_view, club_payment_settings_detail,club_orders_view, orders_bulk_update, announcement_readers,
                     upload_pdf_statement_chatgpt,OrderCreateView, MyOrdersListView, order_update_view,delete_user_from_club,
                     set_preferred_role, club_payment_settings_list, member_payments, create_member_payments, payment_qr, set_vote_lock_days,
                     update_member_payment, remind_attendance_view, remind_match_attendance_view, orders_payments,generate_payment,
@@ -107,6 +107,7 @@ urlpatterns = [
     path("announcements/", announcements_list, name="announcements_list"),
     path("announcements/create/", create_announcement, name="create_announcement"),
     path("announcements/<int:pk>/read/", mark_announcement_read, name="mark_announcement_read"),
+    path("announcements/<int:pk>/readers/", announcement_readers, name="announcement_readers"),
 
 
 

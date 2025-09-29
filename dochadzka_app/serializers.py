@@ -632,6 +632,8 @@ class AnnouncementSerializer(serializers.ModelSerializer):
     club_name = serializers.CharField(source="club.name", read_only=True)
     category_name = serializers.CharField(source="category.name", read_only=True)
     read_at = serializers.SerializerMethodField()
+    read_count = serializers.SerializerMethodField()
+    total_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Announcement
@@ -655,6 +657,12 @@ class AnnouncementSerializer(serializers.ModelSerializer):
             return None
         read = obj.reads.filter(user=user).first()  # AnnouncementRead model
         return read.read_at if read else None
+    
+    def get_read_count(self, obj):
+        return obj.reads.count()
+
+    def get_total_count(self, obj):
+        return User.objects.filter(club=obj.club).count()
 
 
 class AnnouncementReadSerializer(serializers.ModelSerializer):

@@ -3065,3 +3065,19 @@ def mark_announcement_read(request, pk):
     read, created = AnnouncementRead.objects.get_or_create(user=user, announcement=announcement)
     serializer = AnnouncementReadSerializer(read, context={"request": request})
     return Response(serializer.data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def announcement_readers(request, pk):
+    ann = get_object_or_404(Announcement, pk=pk, club=request.user.club)
+    users = User.objects.filter(club=ann.club)
+    data = []
+    for u in users:
+        read = ann.reads.filter(user=u).first()
+        data.append({
+            "id": u.id,
+            "full_name": f"{u.first_name} {u.last_name}".strip() or u.username,
+            "read_at": read.read_at if read else None
+        })
+    return Response(data)
