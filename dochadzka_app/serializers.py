@@ -640,7 +640,7 @@ class AnnouncementSerializer(serializers.ModelSerializer):
             "category", "category_name",
             "date_created", "created_by", "created_by_name",
         ]
-        read_only_fields = ["created_by", "club"]
+        read_only_fields = ["club", "created_by"]   # 🔑 dôležité
 
 
 class AnnouncementReadSerializer(serializers.ModelSerializer):
