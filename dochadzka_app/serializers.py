@@ -624,9 +624,9 @@ class OrderLudimusSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at"]
 
 
-# serializers.py
 from rest_framework import serializers
-from .models import Announcement, AnnouncementRead
+from .models import Announcement, AnnouncementRead, User  # 🔑 pridaj User
+
 class AnnouncementSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
     club_name = serializers.CharField(source="club.name", read_only=True)
@@ -642,27 +642,31 @@ class AnnouncementSerializer(serializers.ModelSerializer):
             "club", "club_name",
             "category", "category_name",
             "date_created", "created_by", "created_by_name",
-            "read_at",
+            "read_at", "read_count", "total_count",  # 🔑 doplnené
         ]
         read_only_fields = ["club", "created_by"]
 
     def get_created_by_name(self, obj):
         if obj.created_by:
-            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip() or obj.created_by.username
+            return (
+                f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+                or obj.created_by.username
+            )
         return None
 
     def get_read_at(self, obj):
-        user = self.context.get("request").user
-        if not user or not user.is_authenticated:
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
             return None
-        read = obj.reads.filter(user=user).first()  # AnnouncementRead model
+        read = obj.reads.filter(user=request.user).first()
         return read.read_at if read else None
-    
+
     def get_read_count(self, obj):
         return obj.reads.count()
 
     def get_total_count(self, obj):
         return User.objects.filter(club=obj.club).count()
+
 
 
 class AnnouncementReadSerializer(serializers.ModelSerializer):
