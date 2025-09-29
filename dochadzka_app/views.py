@@ -3034,9 +3034,8 @@ def create_announcement(request):
     user = request.user
     data = request.data.copy()
 
-    # doplníme klub a používateľa
-    if user.club:
-        data["club"] = user.club.id
+    if user.club_id:
+        data["club"] = user.club_id
 
     serializer = AnnouncementSerializer(data=data)
     if serializer.is_valid():
@@ -3046,7 +3045,6 @@ def create_announcement(request):
             status=status.HTTP_201_CREATED
         )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])

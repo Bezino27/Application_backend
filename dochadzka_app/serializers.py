@@ -627,23 +627,20 @@ class OrderLudimusSerializer(serializers.ModelSerializer):
 # serializers.py
 from rest_framework import serializers
 from .models import Announcement, AnnouncementRead
-
 class AnnouncementSerializer(serializers.ModelSerializer):
-    created_by_name = serializers.SerializerMethodField()
-    club_name = serializers.CharField(source='club.name', read_only=True)
-    category_name = serializers.CharField(source='category.name', read_only=True)
+    created_by_name = serializers.CharField(source="created_by.username", read_only=True)
+    club_name = serializers.CharField(source="club.name", read_only=True)
+    category_name = serializers.CharField(source="category.name", read_only=True)
 
     class Meta:
         model = Announcement
         fields = [
-            'id', 'title', 'content',
-            'club', 'club_name',
-            'category', 'category_name',
-            'date_created', 'created_by_name'
+            "id", "title", "content",
+            "club", "club_name",
+            "category", "category_name",
+            "date_created", "created_by", "created_by_name",
         ]
-
-    def get_created_by_name(self, obj):
-        return getattr(obj, "created_by", None).username if hasattr(obj, "created_by") else None
+        read_only_fields = ["created_by", "club"]
 
 
 class AnnouncementReadSerializer(serializers.ModelSerializer):

@@ -133,17 +133,25 @@ class MatchParticipation(models.Model):
         return f"{self.user.username} - {'potvrdený' if self.confirmed else 'nepotvrdený'} - {self.match}"
 
 class Announcement(models.Model):
-    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='announcements')
-    category = models.ForeignKey(Category, null=True, blank=True, on_delete=models.CASCADE, related_name='announcements')
+    club = models.ForeignKey(
+        Club, on_delete=models.CASCADE, related_name='announcements'
+    )
+    category = models.ForeignKey(
+        Category, null=True, blank=True, on_delete=models.CASCADE, related_name='announcements'
+    )
     title = models.CharField(max_length=200)
     content = models.TextField()
     date_created = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="announcements_created"
+    )
 
     def __str__(self):
         scope = self.category.name if self.category else self.club.name
         return f"Oznámenie pre {scope} - {self.title}"
-
-
 
 from django.conf import settings  # ← dôležité
 from django.db import models
