@@ -3035,12 +3035,12 @@ def create_announcement(request):
     if not user.club_id:
         return Response({"detail": "Používateľ nemá priradený klub"}, status=400)
 
-    data = request.data.copy()
-    data["club"] = user.club_id   # 🔑 vždy doplníme klub
-
-    serializer = AnnouncementSerializer(data=data)
+    serializer = AnnouncementSerializer(data=request.data)
     if serializer.is_valid():
-        announcement = serializer.save(created_by=user)  # uložíme kto ho vytvoril
+        announcement = serializer.save(
+            created_by=user,
+            club=user.club   # 🔑 nastavíme explicitne klub
+        )
         return Response(
             AnnouncementSerializer(announcement).data,
             status=status.HTTP_201_CREATED
@@ -3048,8 +3048,8 @@ def create_announcement(request):
     else:
         print("❌ Serializer errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
+    
+    
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def mark_announcement_read(request, pk):
