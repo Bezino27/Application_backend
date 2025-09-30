@@ -9,7 +9,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     users_in_club, assign_role, remove_role, categories_in_club, coach_players_view, mark_announcement_read, create_announcement, announcements_list,
                     training_update_view, club_detail, coach_attendance_summary, update_match_view, categories_admin, delete_category,
                     all_players_with_roles, player_trainings_history_view, positions_list, player_matches_view,
-                    create_match_participation, create_match_view, jersey_numbers_view, club_documents_view,
+                    create_match_participation, create_match_view, jersey_numbers_view, club_documents_view, password_reset_generate_for_user, password_reset_request,
                     upload_document, match_delete_view, assign_players_to_category, match_stats_view, match_detail_view,
                     match_nominations_view, player_nominated_matches_view, admin_member_payments, set_training_lock_hours,
                     match_participation_view, club_payment_settings_detail,club_orders_view, orders_bulk_update, announcement_readers,
@@ -111,7 +111,9 @@ urlpatterns = [
     path("announcements-admin/", announcements_admin_list, name="announcements_admin_list"),
     path("announcements-admin/<int:pk>/readers/", announcement_admin_readers, name="announcement_admin_readers"),
     path("password_reset/confirm_custom/", reset_password_confirm_custom, name="password_reset_confirm_custom"),
-
+    path("password_reset/request/", password_reset_request, name="password_reset_request"),
+    path("password_reset/generate_for_user/", password_reset_generate_for_user, name="password_reset_generate_for_user"),
+    
 
 
 
