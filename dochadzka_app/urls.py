@@ -1,7 +1,7 @@
 from django.urls import path
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from .views import (me_view, login_view, save_expo_push_token, register_user, chat_users_list,
+from .views import (me_view, login_view, save_expo_push_token, register_user, chat_users_list, reset_password_confirm_custom,
                     coach_players_attendance_view, coach_matches_view, player_attendance_detail,
                     get_categories, player_trainings_view, add_reaction, delete_training_view, training_attendance_view,
                     set_training_attendance, list_clubs, test_push, create_training_view, user_categories_view,
@@ -110,6 +110,7 @@ urlpatterns = [
     path("announcements/<int:pk>/readers/", announcement_readers, name="announcement_readers"),
     path("announcements-admin/", announcements_admin_list, name="announcements_admin_list"),
     path("announcements-admin/<int:pk>/readers/", announcement_admin_readers, name="announcement_admin_readers"),
+    path("password_reset/confirm_custom/", reset_password_confirm_custom, name="password_reset_confirm_custom"),
 
 
 

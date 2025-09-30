@@ -3182,3 +3182,33 @@ def announcement_admin_readers(request, pk):
         for u in users
     ]
     return Response(data)
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from django_rest_passwordreset.models import ResetPasswordToken
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def reset_password_confirm_custom(request):
+    token = request.data.get("token")
+    password = request.data.get("password")
+
+    if not token or not password:
+        return Response({"detail": "Chýba token alebo heslo"}, status=400)
+
+    try:
+        reset_token = ResetPasswordToken.objects.get(key=token)
+    except ResetPasswordToken.DoesNotExist:
+        return Response({"detail": "Neplatný alebo expirovaný token"}, status=400)
+
+    # Zmeň heslo používateľovi
+    user = reset_token.user
+    user.set_password(password)
+    user.save()
+
+    # Token odstránime, aby sa nedal znova použiť
+    reset_token.delete()
+
+    return Response({"detail": "✅ Heslo bolo úspešne zmenené"})
