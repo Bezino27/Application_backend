@@ -5,4 +5,5 @@ class DochadzkaAppConfig(AppConfig):
     name = "dochadzka_app"
 
     def ready(self):
-        import dochadzka_app.signals  # načíta signály
+        import dochadzka_app.signals
+        print("✅ Signály načítané")
