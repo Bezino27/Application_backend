@@ -44,13 +44,20 @@ TIME_ZONE = "Europe/Bratislava"
 USE_TZ = True  # (alebo False ak nechceš ukladať ako UTC)
 
 AUTH_USER_MODEL = 'dochadzka_app.User'
+
+
+
+
+
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "tomikbez@gmail.com"
-EMAIL_HOST_PASSWORD = "app_password"  # vytvor si App Password ak používaš Gmail
+EMAIL_HOST = "smtp.websupport.sk"
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True       # namiesto TLS
+EMAIL_USE_TLS = False
+EMAIL_HOST_USER = "support@ludimus.sk"
+EMAIL_HOST_PASSWORD = "Tomik7727."      # heslo k schránke
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -65,6 +72,8 @@ INSTALLED_APPS = [
     'dochadzka_app',
     'corsheaders',
     'rest_framework_simplejwt',
+    "django_rest_passwordreset",
+
 
 ]
 

@@ -20,3 +20,4 @@ pdfplumber
 openai>=1.0.0
 pay-by-square
 qrcode[pil]
+django-rest-passwordreset

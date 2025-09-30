@@ -7,6 +7,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('api/', include(dochadzka_app_urls)),
+    path("api/password_reset/", include("django_rest_passwordreset.urls", namespace="password_reset")),
+
     path('admin/', admin.site.urls),
 ]
 
