@@ -2,7 +2,7 @@ from django.urls import path
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (me_view, login_view, save_expo_push_token, register_user, chat_users_list, reset_password_confirm_custom,
-                    coach_players_attendance_view, coach_matches_view, player_attendance_detail,
+                    coach_players_attendance_view, coach_matches_view, player_attendance_detail, my_coach_categories,
                     get_categories, player_trainings_view, add_reaction, delete_training_view, training_attendance_view,
                     set_training_attendance, list_clubs, test_push, create_training_view, user_categories_view,
                     training_detail_view, coach_trainings_view, change_password_view, chat_messages_view, announcement_admin_readers, announcements_admin_list,
@@ -113,7 +113,8 @@ urlpatterns = [
     path("password_reset/confirm_custom/", reset_password_confirm_custom, name="password_reset_confirm_custom"),
     path("password_reset/request/", password_reset_request, name="password_reset_request"),
     path("password_reset/generate_for_user/", password_reset_generate_for_user, name="password_reset_generate_for_user"),
-    
+    path("my-coach-categories/", my_coach_categories, name="my_coach_categories"),
+
 
 
 

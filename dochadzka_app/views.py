@@ -3259,3 +3259,33 @@ def password_reset_generate_for_user(request):
     user.email_user("🔑 Reset hesla Ludimus", f"Klikni na tento odkaz: {reset_url}")
 
     return Response({"detail": "Reset link bol odoslaný", "token": token.key})
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_coach_categories(request):
+    """
+    Vráti zoznam kategórií, kde má prihlásený používateľ rolu 'coach'.
+    """
+    user = request.user
+    if not user.club:
+        return Response({"detail": "Používateľ nemá priradený klub"}, status=400)
+
+    # predpokladáš, že user.roles je M2M s modelom Role, ktorý má polia role a category
+    categories = (
+        user.roles.filter(role="coach")
+        .select_related("category")
+        .values("category__id", "category__name")
+    )
+
+    data = [
+        {"id": c["category__id"], "name": c["category__name"]}
+        for c in categories if c["category__id"] is not None
+    ]
+
+    return Response(data)
