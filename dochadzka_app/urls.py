@@ -4,7 +4,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (me_view, login_view, save_expo_push_token, register_user, chat_users_list, reset_password_confirm_custom,
                     coach_players_attendance_view, coach_matches_view, player_attendance_detail, my_coach_categories,
                     get_categories, player_trainings_view, add_reaction, delete_training_view, training_attendance_view,
-                    set_training_attendance, list_clubs, test_push, create_training_view, user_categories_view,
+                    set_training_attendance, list_clubs, test_push, create_training_view, user_categories_view, announcement_delete_view,
                     training_detail_view, coach_trainings_view, change_password_view, chat_messages_view, announcement_admin_readers, announcements_admin_list,
                     users_in_club, assign_role, remove_role, categories_in_club, coach_players_view, mark_announcement_read, create_announcement, announcements_list,
                     training_update_view, club_detail, coach_attendance_summary, update_match_view, categories_admin, delete_category,
@@ -114,6 +114,7 @@ urlpatterns = [
     path("password_reset/request/", password_reset_request, name="password_reset_request"),
     path("password_reset/generate_for_user/", password_reset_generate_for_user, name="password_reset_generate_for_user"),
     path("my-coach-categories/", my_coach_categories, name="my_coach_categories"),
+    path("announcements-delete/<int:pk>/", announcement_delete_view, name="announcement-delete"),
 
 
 

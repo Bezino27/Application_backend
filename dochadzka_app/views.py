@@ -3289,3 +3289,26 @@ def my_coach_categories(request):
     ]
 
     return Response(data)
+
+
+# views/announcements_admin.py
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from .models import Announcement
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def announcement_delete_view(request, pk: int):
+    """
+    Zmaže oznam podľa ID (iba admin klubu).
+    """
+    announcement = get_object_or_404(Announcement, pk=pk)
+
+    # kontrola oprávnenia – napríklad len admin klubu môže zmazať
+    if not request.user.roles.filter(role="admin").exists():
+        return Response({"detail": "Nemáš oprávnenie zmazať tento oznam."}, status=403)
+
+    announcement.delete()
+    return Response({"detail": f"Oznam {pk} bol zmazaný."}, status=204)
