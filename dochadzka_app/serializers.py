@@ -262,10 +262,15 @@ class MatchParticipationCreateSerializer(serializers.ModelSerializer):
         model = MatchParticipation
         fields = ['match', 'confirmed']
 
-    def validate(self, data):
+    def validate(self, data):                
+        user = self.context['request'].user
+        lock_days = getattr(user.club, "vote_lock_days", 0)  # ← ber z klubu, default 2
+
         match = data.get('match')
-        if match.date - timezone.now() < timedelta(days=2):
-            raise serializers.ValidationError("Účasť sa dá meniť najneskôr 2 dni pred zápasom.")
+        if match.date - timezone.now() < timedelta(days=lock_days):
+            raise serializers.ValidationError(
+                f"Účasť sa dá meniť najneskôr {lock_days} dni pred zápasom."
+            )
         return data
 
     def create(self, validated_data):
