@@ -264,7 +264,7 @@ class MatchParticipationCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, data):                
         user = self.context['request'].user
-        lock_days = getattr(user.club, "vote_lock_days", 0)  # ← ber z klubu, default 2
+        lock_days = getattr(user.club, "vote_lock_days", 0)  # ← ber z klubu, default 0
 
         match = data.get('match')
         if match.date - timezone.now() < timedelta(days=lock_days):
