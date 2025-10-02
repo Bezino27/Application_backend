@@ -3059,8 +3059,16 @@ def create_announcement(request):
             created_by=user,
             club=user.club   # 🔑 nastavíme explicitne klub
         )
+         # 🔑 určíme používateľov ktorým to patrí
+        if request.data.get("target") == "club":
+            target_users = user.club.users.all()
+        else:
+            category_ids = request.data.get("categories", [])
+            target_users = user.club.users.filter(roles__category_id__in=category_ids).distinct()
 
-        send_announcement_notification.delay(announcement.id)
+        user_ids = list(target_users.values_list("id", flat=True))
+
+        send_announcement_notification.delay(announcement.id, user_ids)
 
 
         return Response(
