@@ -3007,6 +3007,7 @@ from django.db.models import Count, Q
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from .tasks import send_announcement_notification
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -3058,6 +3059,10 @@ def create_announcement(request):
             created_by=user,
             club=user.club   # 🔑 nastavíme explicitne klub
         )
+
+        send_announcement_notification.delay(announcement.id)
+
+
         return Response(
             AnnouncementSerializer(announcement, context={"request": request}).data,
             status=status.HTTP_201_CREATED

@@ -466,3 +466,43 @@ def notify_order_deleted(user_id: int, order_id: str, amount: str = None):
 
     except Exception as e:
         logger.error(f"Chyba pri posielaní notifikácie o zmazaní objednávky: {e}")
+
+
+# tasks.py
+from celery import shared_task
+from django.contrib.auth import get_user_model
+from .models import Announcement
+
+User = get_user_model()
+
+@shared_task
+def send_announcement_notification(announcement_id):
+    try:
+        ann = Announcement.objects.get(id=announcement_id)
+    except Announcement.DoesNotExist:
+        return
+
+    # 🔔 pripravíme text notifikácie
+    title = f"Nový oznam od {ann.created_by.first_name or ann.created_by.username}"
+    body = ann.title
+
+    # 🔑 cieľová skupina
+    if ann.categories.exists():
+        # len používatelia, ktorí majú aspoň jednu z cieľových kategórií
+        users = User.objects.filter(
+            club=ann.club,
+            roles__category__in=ann.categories.all()
+        ).distinct()
+    else:
+        # ak nie sú zvolené kategórie → celý klub
+        users = User.objects.filter(club=ann.club)
+
+    # 🔔 pošleme push každému s expo tokenom
+    for user in users:
+        for token in getattr(user, "expo_tokens", []):  # podľa tvojho modelu na tokeny
+            send_push_notification(
+                token,
+                title,
+                body,
+                extra={"announcement_id": ann.id}
+            )
