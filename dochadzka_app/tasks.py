@@ -473,36 +473,26 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 from .models import Announcement
 
-User = get_user_model()
-
 @shared_task
-def send_announcement_notification(announcement_id):
-    try:
-        ann = Announcement.objects.get(id=announcement_id)
-    except Announcement.DoesNotExist:
-        return
+def send_announcement_notification(announcement_id, user_ids):
+    from .models import User, Announcement
 
-    # 🔔 pripravíme text notifikácie
-    title = f"Nový oznam od {ann.created_by.first_name or ann.created_by.username}"
-    body = ann.title
+    announcement = Announcement.objects.get(id=announcement_id)
+    users = User.objects.filter(id__in=user_ids)
 
-    # 🔑 cieľová skupina
-    if ann.categories.exists():
-        # len používatelia, ktorí majú aspoň jednu z cieľových kategórií
-        users = User.objects.filter(
-            club=ann.club,
-            roles__category__in=ann.categories.all()
-        ).distinct()
-    else:
-        # ak nie sú zvolené kategórie → celý klub
-        users = User.objects.filter(club=ann.club)
-
-    # 🔔 pošleme push každému s expo tokenom
+    push_tokens = []
     for user in users:
-        for token in getattr(user, "expo_tokens", []):  # podľa tvojho modelu na tokeny
-            send_push_notification(
-                token,
-                title,
-                body,
-                extra={"announcement_id": ann.id}
-            )
+        for token in getattr(user, "expo_tokens", []).all():
+            push_tokens.append(token.token)
+
+    if not push_tokens:
+        return f"No tokens for announcement {announcement_id}"
+
+    # tu voláš funkciu na odosielanie pushov
+    send_push_notification(
+        tokens=push_tokens,
+        title=f"Nový oznam: {announcement.title}",
+        body=announcement.content[:100] + "..."
+    )
+
+    return f"Sent to {len(push_tokens)} devices"
