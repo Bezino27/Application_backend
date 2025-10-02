@@ -473,6 +473,8 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 from .models import Announcement
 
+from celery import shared_task
+
 @shared_task
 def send_announcement_notification(announcement_id, user_ids):
     from .models import User, Announcement
@@ -480,19 +482,14 @@ def send_announcement_notification(announcement_id, user_ids):
     announcement = Announcement.objects.get(id=announcement_id)
     users = User.objects.filter(id__in=user_ids)
 
-    push_tokens = []
+    count = 0
     for user in users:
         for token in getattr(user, "expo_tokens", []).all():
-            push_tokens.append(token.token)
+            send_push_notification(
+                token.token,
+                f"Nový oznam: {announcement.title}",
+                announcement.content[:100] + "..."
+            )
+            count += 1
 
-    if not push_tokens:
-        return f"No tokens for announcement {announcement_id}"
-
-    # tu voláš funkciu na odosielanie pushov
-    send_push_notification(
-        tokens=push_tokens,
-        title=f"Nový oznam: {announcement.title}",
-        body=announcement.content[:100] + "..."
-    )
-
-    return f"Sent to {len(push_tokens)} devices"
+    return f"Sent to {count} devices"
