@@ -965,7 +965,7 @@ def player_matches_view(request):
 
         # ⬅️ pridáme info o locknutí
         club = user.club  # ak má user priamo FK na club
-        vote_lock_days = getattr(club, "vote_lock_days", 2)
+        vote_lock_days = getattr(club, "vote_lock_days", 0)
 
         return Response({
             "matches": serializer.data,
@@ -3227,7 +3227,6 @@ def reset_password_confirm_custom(request):
     return Response({"detail": "✅ Heslo bolo úspešne zmenené"})
 
 
-
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def password_reset_request(request):
@@ -3239,35 +3238,43 @@ def password_reset_request(request):
     if not users.exists():
         return Response({"detail": "Používateľ s týmto emailom neexistuje"}, status=404)
 
+    # 🔧 tu opravujeme – ak existuje presne 1 používateľ, hneď pošli reset link
     if users.count() == 1:
-        # štandardný flow – rovno pošli reset link
         user = users.first()
-        # tu zavoláš svoj existujúci mechanizmus na generovanie tokenu
+        # Zmaž staré tokeny
+        ResetPasswordToken.objects.filter(user=user).delete()
+        # Vytvor nový token
+        token = ResetPasswordToken.objects.create(user=user)
+        # Vytvor odkaz
+        reset_url = f"https://ludimus.sk/reset-password?token={token.key}"
+        # Pošli e-mail
+        user.email_user("🔑 Reset hesla Ludimus", f"Klikni na tento odkaz: {reset_url}")
         return Response({"detail": "Na email bol odoslaný odkaz na reset hesla"})
+
     else:
-        # viac účtov – treba vybrať
-        accounts = [{"id": u.id, "username": u.username, "full_name": f"{u.first_name} {u.last_name}"} for u in users]
+        # Viac účtov – treba vybrať konkrétneho používateľa
+        accounts = [
+            {"id": u.id, "username": u.username, "full_name": f"{u.first_name} {u.last_name}"}
+            for u in users
+        ]
         return Response({"multiple": True, "accounts": accounts})
 
-from django_rest_passwordreset.models import ResetPasswordToken
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def password_reset_generate_for_user(request):
     user_id = request.data.get("user_id")
-    password = request.data.get("password")
 
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return Response({"detail": "Používateľ neexistuje"}, status=404)
 
-    # zmaž staré tokeny
+    # Zmaž staré tokeny
     ResetPasswordToken.objects.filter(user=user).delete()
-    # vytvor nový token
+    # Vytvor nový token
     token = ResetPasswordToken.objects.create(user=user)
-
-    # tu pošli email s odkazom
+    # Pošli e-mail
     reset_url = f"https://ludimus.sk/reset-password?token={token.key}"
     user.email_user("🔑 Reset hesla Ludimus", f"Klikni na tento odkaz: {reset_url}")
 
