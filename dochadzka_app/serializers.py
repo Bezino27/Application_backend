@@ -233,7 +233,7 @@ class MatchSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'date', 'club_name', 'location', 'opponent',
             'description', 'category', 'category_name', 'user_status',
-            'rating', 'plus_minus',  # ⬅️ pridaj sem
+            'rating', 'plus_minus', 'video_link'
         ]
 
     def get_user_status(self, obj):
@@ -331,7 +331,7 @@ class MatchDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id", "category", "category_name", "date", "location", "opponent", "description",
             "players_present", "players_absent", "players_unknown",
-            "nominations_created", "nominations"
+            "nominations_created", "nominations","video_link"
         ]
 
     def get_category_name(self, obj):
