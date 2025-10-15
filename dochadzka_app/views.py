@@ -3447,31 +3447,40 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User
 
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth import get_user_model
+from .models import Category, UserCategoryRole
+
+User = get_user_model()
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def players_in_category(request, category_id):
     """
-    Vráti všetkých hráčov v danej kategórii (role = 'player').
+    Vráti všetkých hráčov (role='player') v danej kategórii.
     """
     try:
         category = Category.objects.get(id=category_id)
     except Category.DoesNotExist:
-        return Response({"detail": "Kategória neexistuje"}, status=404)
+        return Response({"detail": "Kategória neexistuje"}, status=status.HTTP_404_NOT_FOUND)
 
-    # nájdi všetkých používateľov, ktorí majú túto kategóriu a rolu hráča
-    user_profiles = User.objects.filter(
-        roles__role="player",
-        roles__category=category
-    ).select_related("user")
+    # nájdi používateľov s rolou 'player' v danej kategórii
+    roles = UserCategoryRole.objects.filter(category=category, role="player").select_related("user", "user__position")
 
-    data = []
-    for profile in user_profiles:
-        user = profile.user
-        data.append({
-            "id": user.id,
-            "name": f"{user.first_name} {user.last_name}",
-            "position": user.position.name if getattr(user, "position", None) else None,
-            "number": getattr(user, "number", None),
+    players = []
+    for r in roles:
+        u = r.user
+        players.append({
+            "id": u.id,
+            "name": f"{u.first_name} {u.last_name}".strip() or u.username,
+            "number": u.number,
+            "position": u.position.name if u.position else None,
+            "birth_date": u.birth_date,
         })
 
-    return Response(data, status=200)
+    return Response(players, status=status.HTTP_200_OK)
