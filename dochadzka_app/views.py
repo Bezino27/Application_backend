@@ -247,7 +247,8 @@ def training_detail_view(request, training_id):
     all_players = User.objects.filter(
         roles__category=training.category,
         roles__role='player'
-    ).distinct().select_related('position')
+    ).distinct().select_related('position').order_by('number')
+
 
     present = []
     absent = []
