@@ -15,7 +15,8 @@ import json
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, permission_classes
 from .models import UserCategoryRole, Category, User, Club, TrainingAttendance
-
+from django.db.models import IntegerField, Value, Case, When
+from django.db.models.functions import Cast
 User = get_user_model()
 
 
@@ -247,7 +248,15 @@ def training_detail_view(request, training_id):
     all_players = User.objects.filter(
         roles__category=training.category,
         roles__role='player'
-    ).distinct().select_related('position').order_by('number')
+    ).distinct().select_related('position').annotate(
+        number_int=Case(
+            # Ak má číslo vyplnené a je to číslo → pretypuj
+            When(number__regex=r'^\d+$', then=Cast('number', IntegerField())),
+            # Inak daj veľké číslo, aby bol na konci
+            default=Value(9999),
+            output_field=IntegerField(),
+        )
+    ).order_by('number_int', 'last_name', 'first_name')
 
 
     present = []
