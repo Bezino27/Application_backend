@@ -17,7 +17,8 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     set_preferred_role, club_payment_settings_list, member_payments, create_member_payments, payment_qr, set_vote_lock_days,
                     update_member_payment, remind_attendance_view, remind_match_attendance_view, orders_payments,generate_payment,
                     admin_member_payments_summary, new_members_without_payments,cancel_order_item_view, order_delete_view, create_jersey_order,
-                    check_number, jersey_orders_list, jersey_order_delete_view, jersey_orders_bulk_update, generate_jersey_payment, create_order)
+                    check_number, jersey_orders_list, jersey_order_delete_view, jersey_orders_bulk_update, generate_jersey_payment, create_order,
+                    formation_detail, formations_by_category,add_line_to_formation,formation_player_manage)
 
 urlpatterns = [
     path('me/', me_view, name='me'),
@@ -115,7 +116,10 @@ urlpatterns = [
     path("password_reset/generate_for_user/", password_reset_generate_for_user, name="password_reset_generate_for_user"),
     path("my-coach-categories/", my_coach_categories, name="my_coach_categories"),
     path("announcements-delete/<int:pk>/", announcement_delete_view, name="announcement-delete"),
-
+    path("formations/<int:category_id>/", formations_by_category),
+    path("formation/<int:formation_id>/", formation_detail),
+    path("formation/<int:formation_id>/add-line/", add_line_to_formation),
+    path("formation-line/<int:line_id>/player/", formation_player_manage),
 
 
 

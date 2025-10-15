@@ -372,3 +372,18 @@ class AnnouncementRead(models.Model):
 
     class Meta:
         unique_together = ("announcement", "user")
+
+
+
+class Formation(models.Model):
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+
+class FormationLine(models.Model):
+    formation = models.ForeignKey(Formation, on_delete=models.CASCADE, related_name="lines")
+    number = models.PositiveIntegerField()  # napr. 1, 2, 3. päťka
+
+class FormationPlayer(models.Model):
+    line = models.ForeignKey(FormationLine, on_delete=models.CASCADE, related_name="players")
+    player = models.ForeignKey(User, on_delete=models.CASCADE)
+    position = models.CharField(max_length=3, choices=[("LW", "LW"), ("C", "C"), ("RW", "RW"), ("LD", "LD"), ("RD", "RD"), ("G", "G")])

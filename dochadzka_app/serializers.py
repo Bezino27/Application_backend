@@ -680,3 +680,31 @@ class AnnouncementReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnnouncementRead
         fields = ['id', 'announcement', 'user', 'user_name', 'read_at']
+
+from rest_framework import serializers
+from .models import Formation, FormationLine, FormationPlayer
+from django.contrib.auth.models import User
+
+
+class FormationPlayerSerializer(serializers.ModelSerializer):
+    player_name = serializers.CharField(source='player.get_full_name', read_only=True)
+
+    class Meta:
+        model = FormationPlayer
+        fields = ["id", "player", "player_name", "position"]
+
+
+class FormationLineSerializer(serializers.ModelSerializer):
+    players = FormationPlayerSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = FormationLine
+        fields = ["id", "number", "players"]
+
+
+class FormationSerializer(serializers.ModelSerializer):
+    lines = FormationLineSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Formation
+        fields = ["id", "name", "category", "lines"]

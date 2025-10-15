@@ -3332,3 +3332,110 @@ def announcement_delete_view(request, pk: int):
 
     announcement.delete()
     return Response({"detail": f"Oznam {pk} bol zmazaný."}, status=204)
+
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .models import Formation, FormationLine, FormationPlayer, Category
+from .serializers import FormationSerializer, FormationLineSerializer, FormationPlayerSerializer
+
+
+# ✅ 1. Všetky formácie pre kategóriu
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def formations_by_category(request, category_id):
+    try:
+        category = Category.objects.get(id=category_id)
+    except Category.DoesNotExist:
+        return Response({"detail": "Kategória neexistuje"}, status=404)
+
+    if request.method == "GET":
+        formations = Formation.objects.filter(category=category)
+        serializer = FormationSerializer(formations, many=True)
+        return Response(serializer.data)
+
+    if request.method == "POST":
+        serializer = FormationSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(category=category)
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+
+# ✅ 2. Detail formácie (GET, PUT, DELETE)
+@api_view(["GET", "PUT", "DELETE"])
+@permission_classes([IsAuthenticated])
+def formation_detail(request, formation_id):
+    try:
+        formation = Formation.objects.get(id=formation_id)
+    except Formation.DoesNotExist:
+        return Response({"detail": "Formácia neexistuje"}, status=404)
+
+    if request.method == "GET":
+        serializer = FormationSerializer(formation)
+        return Response(serializer.data)
+
+    if request.method == "PUT":
+        serializer = FormationSerializer(formation, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    if request.method == "DELETE":
+        formation.delete()
+        return Response({"detail": "Formácia zmazaná"}, status=204)
+
+
+# ✅ 3. Pridanie novej päťky do formácie
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def add_line_to_formation(request, formation_id):
+    try:
+        formation = Formation.objects.get(id=formation_id)
+    except Formation.DoesNotExist:
+        return Response({"detail": "Formácia neexistuje"}, status=404)
+
+    serializer = FormationLineSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(formation=formation)
+        return Response(serializer.data, status=201)
+    return Response(serializer.errors, status=400)
+
+
+# ✅ 4. Pridanie alebo úprava hráča v päťke
+@api_view(["POST", "PUT", "DELETE"])
+@permission_classes([IsAuthenticated])
+def formation_player_manage(request, line_id):
+    try:
+        line = FormationLine.objects.get(id=line_id)
+    except FormationLine.DoesNotExist:
+        return Response({"detail": "Päťka neexistuje"}, status=404)
+
+    if request.method == "POST":
+        serializer = FormationPlayerSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(line=line)
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
+
+    if request.method == "PUT":
+        try:
+            player_id = request.data.get("id")
+            player = FormationPlayer.objects.get(id=player_id, line=line)
+        except FormationPlayer.DoesNotExist:
+            return Response({"detail": "Hráč v tejto päťke neexistuje"}, status=404)
+
+        serializer = FormationPlayerSerializer(player, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    if request.method == "DELETE":
+        player_id = request.data.get("id")
+        FormationPlayer.objects.filter(id=player_id, line=line).delete()
+        return Response({"detail": "Hráč odstránený"}, status=204)
