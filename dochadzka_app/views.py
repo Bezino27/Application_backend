@@ -3484,3 +3484,35 @@ def players_in_category(request, category_id):
         })
 
     return Response(players, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def formation_with_attendance(request, category_id, training_id):
+    """
+    Vráti formácie + info o hráčoch s farbou podľa dochádzky.
+    """
+    from .serializers import FormationSerializer
+    from .models import TrainingAttendance, Formation
+
+    try:
+        formations = Formation.objects.filter(category_id=category_id)
+    except Formation.DoesNotExist:
+        return Response({"detail": "Kategória neexistuje"}, status=404)
+
+    # načítaj všetky attendance pre daný tréning
+    attendances = TrainingAttendance.objects.filter(training_id=training_id)
+    attendance_map = {a.user_id: a.status for a in attendances}
+
+    serializer = FormationSerializer(formations, many=True)
+    data = serializer.data
+
+    # doplň status hráčov
+    for formation in data:
+        for line in formation["lines"]:
+            for player in line["players"]:
+                user_id = player["player"]
+                status = attendance_map.get(user_id, "unanswered")
+                player["attendance_status"] = status
+
+    return Response(data)
