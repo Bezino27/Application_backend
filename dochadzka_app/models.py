@@ -386,4 +386,4 @@ class FormationLine(models.Model):
 class FormationPlayer(models.Model):
     line = models.ForeignKey(FormationLine, on_delete=models.CASCADE, related_name="players")
     player = models.ForeignKey(User, on_delete=models.CASCADE)
-    position = models.CharField(max_length=3, choices=[("LW", "LW"), ("C", "C"), ("RW", "RW"), ("LD", "LD"), ("RD", "RD"), ("G", "G")])
+    position = models.CharField(max_length=3, choices=[("LW", "LW"), ("C", "C"), ("RW", "RW"), ("LD", "LD"), ("RD", "RD"), ("N", "N")])
