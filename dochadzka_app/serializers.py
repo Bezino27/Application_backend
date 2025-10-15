@@ -701,8 +701,10 @@ class FormationLineSerializer(serializers.ModelSerializer):
         model = FormationLine
         fields = ["id", "number", "players"]
 
-
 class FormationSerializer(serializers.ModelSerializer):
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(), required=False
+    )
     lines = FormationLineSerializer(many=True, read_only=True)
 
     class Meta:
