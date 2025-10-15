@@ -3390,7 +3390,6 @@ def formation_detail(request, formation_id):
         return Response({"detail": "Formácia zmazaná"}, status=204)
 
 
-# ✅ 3. Pridanie novej päťky do formácie
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def add_line_to_formation(request, formation_id):
@@ -3399,12 +3398,15 @@ def add_line_to_formation(request, formation_id):
     except Formation.DoesNotExist:
         return Response({"detail": "Formácia neexistuje"}, status=404)
 
-    serializer = FormationLineSerializer(data=request.data)
+    # automaticky určíme číslo päťky
+    existing_count = formation.lines.count()
+    new_number = existing_count + 1
+
+    serializer = FormationLineSerializer(data={"number": new_number})
     if serializer.is_valid():
         serializer.save(formation=formation)
         return Response(serializer.data, status=201)
     return Response(serializer.errors, status=400)
-
 
 # ✅ 4. Pridanie alebo úprava hráča v päťke
 @api_view(["POST", "PUT", "DELETE"])
