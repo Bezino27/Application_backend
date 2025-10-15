@@ -3439,3 +3439,39 @@ def formation_player_manage(request, line_id):
         player_id = request.data.get("id")
         FormationPlayer.objects.filter(id=player_id, line=line).delete()
         return Response({"detail": "Hráč odstránený"}, status=204)
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.contrib.auth.models import User
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def players_in_category(request, category_id):
+    """
+    Vráti všetkých hráčov v danej kategórii (role = 'player').
+    """
+    try:
+        category = Category.objects.get(id=category_id)
+    except Category.DoesNotExist:
+        return Response({"detail": "Kategória neexistuje"}, status=404)
+
+    # nájdi všetkých používateľov, ktorí majú túto kategóriu a rolu hráča
+    user_profiles = User.objects.filter(
+        roles__role="player",
+        roles__category=category
+    ).select_related("user")
+
+    data = []
+    for profile in user_profiles:
+        user = profile.user
+        data.append({
+            "id": user.id,
+            "name": f"{user.first_name} {user.last_name}",
+            "position": user.position.name if getattr(user, "position", None) else None,
+            "number": getattr(user, "number", None),
+        })
+
+    return Response(data, status=200)
