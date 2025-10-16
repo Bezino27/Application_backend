@@ -192,8 +192,9 @@ def player_trainings_view(request):
 @permission_classes([IsAuthenticated])
 def set_training_attendance(request):
     training_id = request.data.get('training_id')
-    user_id = request.data.get('user_id')  # ← nová možnosť
+    user_id = request.data.get('user_id')  # možnosť, ak tréner mení iným hráčom
     status_value = request.data.get('status')
+    reason = request.data.get('reason', None)  # 💥 nový parameter
 
     if status_value not in ['present', 'absent', 'unknown']:
         return Response({"error": "Neplatný status"}, status=status.HTTP_400_BAD_REQUEST)
@@ -214,18 +215,26 @@ def set_training_attendance(request):
         except User.DoesNotExist:
             return Response({"error": "Používateľ nenájdený"}, status=status.HTTP_404_NOT_FOUND)
 
+    # Získaj alebo vytvor záznam
     attendance, created = TrainingAttendance.objects.get_or_create(
         user=user_to_update,
         training=training,
-        defaults={'status': status_value}
+        defaults={
+            'status': status_value,
+            'reason': reason if status_value == 'absent' else None,  # 💥 uložíme dôvod iba pri absencii
+        },
     )
 
     if not created:
         attendance.status = status_value
+        attendance.reason = reason if status_value == 'absent' else None  # 💥 aktualizujeme dôvod
         attendance.save()
 
-    return Response({"message": "Účasť bola úspešne zaznamenaná", "status": status_value})
-
+    return Response({
+        "message": "Účasť bola úspešne zaznamenaná",
+        "status": status_value,
+        "reason": attendance.reason,  # 💥 pridaj aj spätnú hodnotu
+    })
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

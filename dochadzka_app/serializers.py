@@ -68,6 +68,18 @@ class UserMeUpdateSerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 from .models import Training, TrainingAttendance
 
+
+from .models import TrainingAttendance
+from django.contrib.auth import get_user_model
+User = get_user_model()
+
+class TrainingAttendanceSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.name', read_only=True)
+
+    class Meta:
+        model = TrainingAttendance
+        fields = ['id', 'user', 'user_name', 'status', 'reason']
+
 class TrainingAttendanceSummarySerializer(serializers.Serializer):
     present = serializers.IntegerField()
     absent = serializers.IntegerField()
@@ -77,6 +89,7 @@ class TrainingSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name', read_only=True)
     attendance_summary = serializers.SerializerMethodField()
     user_status = serializers.SerializerMethodField()
+    user_reason = serializers.SerializerMethodField()
     date = serializers.SerializerMethodField()
 
     def get_date(self, obj):
@@ -85,7 +98,7 @@ class TrainingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Training
         fields = ['id', 'description', 'date', 'location', 'category',
-                  'category_name', 'attendance_summary', 'user_status']
+                  'category_name', 'attendance_summary', 'user_status', 'user_reason']
 
     from django.contrib.auth import get_user_model
     User = get_user_model()
