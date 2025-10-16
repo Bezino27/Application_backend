@@ -143,6 +143,11 @@ class TrainingSerializer(serializers.ModelSerializer):
         user = self.context.get('request').user
         attendance = obj.attendances.filter(user=user).first()
         return attendance.status if attendance else "unknown"
+    
+    def get_user_reason(self, obj):
+        user = self.context.get('request').user
+        attendance = obj.attendances.filter(user=user).first()
+        return attendance.reason if attendance else None
 
 class TrainingCreateSerializer(serializers.ModelSerializer):
     class Meta:
