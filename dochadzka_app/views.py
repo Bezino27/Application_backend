@@ -254,23 +254,26 @@ def training_detail_view(request, training_id):
         return Response({"error": "Tréning neexistuje"}, status=status.HTTP_404_NOT_FOUND)
 
     attendances = TrainingAttendance.objects.filter(training=training).select_related('user')
-    all_players = User.objects.filter(
-        roles__category=training.category,
-        roles__role='player'
-    ).distinct().select_related('position').annotate(
-        number_int=Case(
-            # Ak má číslo vyplnené a je to číslo → pretypuj
-            When(number__regex=r'^\d+$', then=Cast('number', IntegerField())),
-            # Inak daj veľké číslo, aby bol na konci
-            default=Value(9999),
-            output_field=IntegerField(),
+
+    # Zistí, či je aktuálny používateľ tréner tejto kategórie
+    is_coach = request.user.roles.filter(role='coach', category=training.category).exists()
+
+    # Získaj všetkých hráčov z kategórie
+    all_players = (
+        User.objects.filter(roles__category=training.category, roles__role='player')
+        .distinct()
+        .select_related('position')
+        .annotate(
+            number_int=Case(
+                When(number__regex=r'^\d+$', then=Cast('number', IntegerField())),
+                default=Value(9999),
+                output_field=IntegerField(),
+            )
         )
-    ).order_by('number_int', 'last_name', 'first_name')
+        .order_by('number_int', 'last_name', 'first_name')
+    )
 
-
-    present = []
-    absent = []
-    unknown = []
+    present, absent, unknown = [], [], []
 
     for player in all_players:
         att = next((a for a in attendances if a.user_id == player.id), None)
@@ -281,15 +284,18 @@ def training_detail_view(request, training_id):
             "name": full_name,
             "number": player.number,
             "birth_date": player.birth_date,
-            "position": player.position.name if player.position else None
+            "position": player.position.name if player.position else None,
         }
 
         if att:
             if att.status == 'present':
                 present.append(player_data)
             elif att.status == 'absent':
+                # 💥 dôvod sa zobrazí iba trénerovi
+                if is_coach and att.reason:
+                    player_data["reason"] = att.reason
                 absent.append(player_data)
-            elif att.status == 'unknown':
+            else:
                 unknown.append(player_data)
         else:
             unknown.append(player_data)
@@ -305,8 +311,8 @@ def training_detail_view(request, training_id):
         "players": {
             "present": present,
             "absent": absent,
-            "unknown": unknown
-        }
+            "unknown": unknown,
+        },
     })
 
 from rest_framework.decorators import api_view, permission_classes
