@@ -292,10 +292,9 @@ def training_detail_view(request, training_id):
             "position": player.position.name if player.position else None,
         }
 
-        # 🕓 ak existuje záznam o dochádzke, pridáme čas
         if att and att.responded_at:
             local_dt = localtime(att.responded_at)
-            player_data["responded_at"] = local_dt.strftime("%d.%m.%Y %H:%M")
+            player_data["responded_at"] = local_dt.isoformat() 
 
         if att:
             if att.status == 'present':
