@@ -294,7 +294,7 @@ def training_detail_view(request, training_id):
 
         # 🕓 ak existuje záznam o dochádzke, pridáme čas
         if att and att.responded_at:
-            player_data["responded_at"] = att.responded_at.isoformat()
+            player_data["responded_at"] = att.responded_at.strftime("%Y-%m-%d %H:%M")
 
 
         if att:
@@ -3554,3 +3554,38 @@ def formation_with_attendance(request, category_id, training_id):
                 player["attendance_status"] = status
 
     return Response(data)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_account_view(request):
+    user = request.user
+
+    try:
+        username = user.username
+        # postupne odstránime údaje pre istotu, ak existujú
+        TrainingAttendance.objects.filter(user=user).delete()
+        MatchParticipation.objects.filter(user=user).delete()
+        MatchNomination.objects.filter(user=user).delete()
+        MemberPayment.objects.filter(user=user).delete()
+        Message.objects.filter(sender=user).delete()
+        Message.objects.filter(receiver=user).delete()
+
+        # odstráni profil, ak existuje
+        if hasattr(user, "userprofile"):
+            user.userprofile.delete()
+
+        # odstráni samotného používateľa
+        user.delete()
+
+        return Response(
+            {"detail": f"Účet používateľa {username} bol úspešne odstránený."},
+            status=status.HTTP_200_OK,
+        )
+
+    except Exception as e:
+        print(f"❌ Chyba pri mazaní účtu: {e}")
+        return Response(
+            {"error": "Nepodarilo sa vymazať účet."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

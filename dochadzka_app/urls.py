@@ -18,7 +18,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     update_member_payment, remind_attendance_view, remind_match_attendance_view, orders_payments,generate_payment,
                     admin_member_payments_summary, new_members_without_payments,cancel_order_item_view, order_delete_view, create_jersey_order,
                     check_number, jersey_orders_list, jersey_order_delete_view, jersey_orders_bulk_update, generate_jersey_payment, create_order,
-                    formation_detail, formations_by_category,add_line_to_formation,formation_player_manage, players_in_category, formation_with_attendance)
+                    formation_detail, formations_by_category,add_line_to_formation,formation_player_manage, players_in_category, formation_with_attendance, delete_account_view)
 
 urlpatterns = [
     path('me/', me_view, name='me'),
@@ -122,6 +122,7 @@ urlpatterns = [
     path("formation-line/<int:line_id>/player/", formation_player_manage),
     path("players-in-category/<int:category_id>/", players_in_category),
     path("formations-with-attendance/<int:category_id>/<int:training_id>/", formation_with_attendance),
+    path("delete-account/", delete_account_view, name="delete-account"),
 
 
 
