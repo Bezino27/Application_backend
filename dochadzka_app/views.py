@@ -6,13 +6,12 @@ from rest_framework.permissions import IsAuthenticated
 from .serializers import (ClubSerializer, CategorySerializer,
                           UserMeUpdateSerializer, CategorySerializer2, UserCategoryRoleSerializer,
                           MatchParticipationCreateSerializer)
-
+from django.utils.timezone import localtime
 from rest_framework import status
 from django.contrib.auth import authenticate, login
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-from django.utils.timezone import localtime
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, permission_classes
 from .models import UserCategoryRole, Category, User, Club, TrainingAttendance
@@ -295,8 +294,8 @@ def training_detail_view(request, training_id):
 
         # 🕓 ak existuje záznam o dochádzke, pridáme čas
         if att and att.responded_at:
-            player_data["responded_at"] = att.responded_at.strftime("%Y-%m-%d %H:%M")
-
+            local_dt = localtime(att.responded_at)
+            player_data["responded_at"] = local_dt.strftime("%d.%m.%Y %H:%M")
 
         if att:
             if att.status == 'present':
@@ -310,21 +309,20 @@ def training_detail_view(request, training_id):
         else:
             unknown.append(player_data)
 
-        return Response({
-            "id": training.id,
-            "description": training.description,
-            "date": localtime(training.date).isoformat(),
-            "location": training.location,
-            "created_by": training.created_by.username if training.created_by else "Neznámy",
-            "category_id": training.category.id,
-            "category_name": training.category.name,
-            "players": {
-                "present": present,
-                "absent": absent,
-                "unknown": unknown,
-            },
-        })
-        
+    return Response({
+        "id": training.id,
+        "description": training.description,
+        "date": training.date.isoformat(),
+        "location": training.location,
+        "created_by": training.created_by.username if training.created_by else "Neznámy",
+        "category_id": training.category.id,
+        "category_name": training.category.name,
+        "players": {
+            "present": present,
+            "absent": absent,
+            "unknown": unknown,
+        },
+    })
 
 
 from rest_framework.decorators import api_view, permission_classes
