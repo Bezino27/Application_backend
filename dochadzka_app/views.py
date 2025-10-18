@@ -294,7 +294,8 @@ def training_detail_view(request, training_id):
 
         # 🕓 ak existuje záznam o dochádzke, pridáme čas
         if att and att.responded_at:
-            player_data["responded_at"] = att.responded_at.strftime("%H:%M")
+            player_data["responded_at"] = att.responded_at.isoformat()
+
 
         if att:
             if att.status == 'present':
