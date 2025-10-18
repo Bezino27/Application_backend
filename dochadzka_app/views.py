@@ -292,11 +292,14 @@ def training_detail_view(request, training_id):
             "position": player.position.name if player.position else None,
         }
 
+        # 🕓 ak existuje záznam o dochádzke, pridáme čas
+        if att and att.responded_at:
+            player_data["responded_at"] = att.responded_at.strftime("%H:%M")
+
         if att:
             if att.status == 'present':
                 present.append(player_data)
             elif att.status == 'absent':
-                # 💥 dôvod sa zobrazí iba trénerovi
                 if is_coach and att.reason:
                     player_data["reason"] = att.reason
                 absent.append(player_data)
@@ -319,6 +322,7 @@ def training_detail_view(request, training_id):
             "unknown": unknown,
         },
     })
+
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -398,13 +402,7 @@ def training_attendance_view(request, training_id):
 
     # načítaj všetky dochádzky pre tento tréning
     attendances = TrainingAttendance.objects.filter(training=training)
-    attendance_map = {
-        a.user_id: {
-            "status": a.status,
-            "responded_at": a.responded_at.strftime("%H:%M") if a.responded_at else None
-        }
-        for a in attendances
-    }
+    attendance_map = {a.user_id: a.status for a in attendances}
 
     data = [
         {
@@ -412,14 +410,13 @@ def training_attendance_view(request, training_id):
             "name": f"{player.first_name} {player.last_name}".strip() or player.username,
             "number": player.number,
             "birth_date": player.birth_date,
-            "status": attendance_map.get(player.id, {}).get("status", "unknown"),
-            "responded_at": attendance_map.get(player.id, {}).get("responded_at"),
+            "status": attendance_map.get(player.id, "unknown")  # ← pridaj status
+            
         }
         for player in players
     ]
 
     return Response(data)
-
 
 
 from rest_framework.decorators import api_view, permission_classes
