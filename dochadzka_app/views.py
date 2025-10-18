@@ -12,6 +12,7 @@ from django.contrib.auth import authenticate, login
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
+from django.utils.timezone import localtime
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, permission_classes
 from .models import UserCategoryRole, Category, User, Club, TrainingAttendance
