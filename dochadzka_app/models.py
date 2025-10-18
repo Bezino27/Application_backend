@@ -114,6 +114,7 @@ class TrainingAttendance(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='training_attendances')
     status = models.CharField(max_length=10, choices=AttendanceStatus.choices, default=AttendanceStatus.UNANSWERED)
     reason = models.CharField(max_length=255, blank=True, null=True)  
+    responded_at = models.DateTimeField(null=True, blank=True)  
 
     class Meta:
         unique_together = ('training', 'user')
@@ -127,6 +128,7 @@ class MatchParticipation(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                              related_name='match_participations')  # oprava
     confirmed = models.BooleanField(default=False)
+    responded_at = models.DateTimeField(null=True, blank=True)  
 
     class Meta:
         unique_together = ('match', 'user')

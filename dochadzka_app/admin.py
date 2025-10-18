@@ -89,7 +89,7 @@ class TrainingAdmin(admin.ModelAdmin):
 
 @admin.register(TrainingAttendance)
 class TrainingAttendanceAdmin(admin.ModelAdmin):
-    list_display = ('training', 'user' )
+    list_display = ('training', 'user','responded_at' )
     search_fields = ('user__username', 'training__category__name')
 
 

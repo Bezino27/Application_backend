@@ -222,18 +222,23 @@ def set_training_attendance(request):
         defaults={
             'status': status_value,
             'reason': reason if status_value == 'absent' else None,  # 💥 uložíme dôvod iba pri absencii
+            'responded_at': timezone.now(),  # 🕓 zaznamenáme čas, keď hráč zahlasoval prvýkrát
+
         },
     )
 
     if not created:
         attendance.status = status_value
         attendance.reason = reason if status_value == 'absent' else None  # 💥 aktualizujeme dôvod
+        attendance.responded_at = timezone.now()  # 🕓 aktualizujeme čas pri každej zmene hlasovania
         attendance.save()
 
     return Response({
         "message": "Účasť bola úspešne zaznamenaná",
         "status": status_value,
         "reason": attendance.reason,  # 💥 pridaj aj spätnú hodnotu
+        "responded_at": attendance.responded_at,  # 💥 vrátime čas hlasovania
+
     })
 
 @api_view(['GET'])
