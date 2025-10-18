@@ -3556,6 +3556,11 @@ def formation_with_attendance(request, category_id, training_id):
     return Response(data)
 
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_account_view(request):
@@ -3563,29 +3568,54 @@ def delete_account_view(request):
 
     try:
         username = user.username
-        # postupne odstránime údaje pre istotu, ak existujú
-        TrainingAttendance.objects.filter(user=user).delete()
-        MatchParticipation.objects.filter(user=user).delete()
-        MatchNomination.objects.filter(user=user).delete()
-        MemberPayment.objects.filter(user=user).delete()
-        Message.objects.filter(sender=user).delete()
-        Message.objects.filter(receiver=user).delete()
 
-        # odstráni profil, ak existuje
+        # 🔹 bezpečné mazanie (každý blok má vlastný try)
+        try:
+            from models import TrainingAttendance
+            TrainingAttendance.objects.filter(user=user).delete()
+        except Exception as e:
+            print("⚠️ TrainingAttendance skip:", e)
+
+        try:
+            from models import MatchParticipation, MatchNomination
+            MatchParticipation.objects.filter(user=user).delete()
+            MatchNomination.objects.filter(user=user).delete()
+        except Exception as e:
+            print("⚠️ Match models skip:", e)
+
+        try:
+            from models import MemberPayment
+            MemberPayment.objects.filter(user=user).delete()
+        except Exception as e:
+            print("⚠️ Payments skip:", e)
+
+        try:
+            from models import Message
+            Message.objects.filter(sender=user).delete()
+            Message.objects.filter(receiver=user).delete()
+        except Exception as e:
+            print("⚠️ Chat skip:", e)
+
+        # 🔹 vymaž profil, ak existuje
         if hasattr(user, "userprofile"):
             user.userprofile.delete()
 
-        # odstráni samotného používateľa
+        # 🔹 vymaž roly, ak ich má
+        if hasattr(user, "roles"):
+            user.roles.all().delete()
+
+        # 🔹 nakoniec samotný používateľ
         user.delete()
 
+        print(f"✅ Účet {username} bol odstránený.")
         return Response(
             {"detail": f"Účet používateľa {username} bol úspešne odstránený."},
             status=status.HTTP_200_OK,
         )
 
     except Exception as e:
-        print(f"❌ Chyba pri mazaní účtu: {e}")
+        print(f"❌ Chyba pri mazaní účtu: {type(e).__name__}: {e}")
         return Response(
-            {"error": "Nepodarilo sa vymazať účet."},
+            {"error": f"Nepodarilo sa vymazať účet: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
