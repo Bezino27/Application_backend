@@ -398,7 +398,13 @@ def training_attendance_view(request, training_id):
 
     # načítaj všetky dochádzky pre tento tréning
     attendances = TrainingAttendance.objects.filter(training=training)
-    attendance_map = {a.user_id: a.status for a in attendances}
+    attendance_map = {
+        a.user_id: {
+            "status": a.status,
+            "responded_at": a.responded_at.strftime("%H:%M") if a.responded_at else None
+        }
+        for a in attendances
+    }
 
     data = [
         {
@@ -406,12 +412,14 @@ def training_attendance_view(request, training_id):
             "name": f"{player.first_name} {player.last_name}".strip() or player.username,
             "number": player.number,
             "birth_date": player.birth_date,
-            "status": attendance_map.get(player.id, "unknown")  # ← pridaj status
+            "status": attendance_map.get(player.id, {}).get("status", "unknown"),
+            "responded_at": attendance_map.get(player.id, {}).get("responded_at"),
         }
         for player in players
     ]
 
     return Response(data)
+
 
 
 from rest_framework.decorators import api_view, permission_classes
