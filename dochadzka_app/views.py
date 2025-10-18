@@ -309,20 +309,21 @@ def training_detail_view(request, training_id):
         else:
             unknown.append(player_data)
 
-    return Response({
-        "id": training.id,
-        "description": training.description,
-        "date": training.date.isoformat(),
-        "location": training.location,
-        "created_by": training.created_by.username if training.created_by else "Neznámy",
-        "category_id": training.category.id,
-        "category_name": training.category.name,
-        "players": {
-            "present": present,
-            "absent": absent,
-            "unknown": unknown,
-        },
-    })
+        return Response({
+            "id": training.id,
+            "description": training.description,
+            "date": localtime(training.date).isoformat(),
+            "location": training.location,
+            "created_by": training.created_by.username if training.created_by else "Neznámy",
+            "category_id": training.category.id,
+            "category_name": training.category.name,
+            "players": {
+                "present": present,
+                "absent": absent,
+                "unknown": unknown,
+            },
+        })
+        
 
 
 from rest_framework.decorators import api_view, permission_classes
