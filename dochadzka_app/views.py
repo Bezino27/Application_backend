@@ -2405,46 +2405,6 @@ from .models import Order,OrderItem
 from .serializers import OrderUpdateSerializer
 from .tasks import notify_order_paid, notify_order_status_changed
 
-@api_view(["PUT"])
-@permission_classes([IsAuthenticated])
-def order_update_view(request, order_id: int):
-    order = get_object_or_404(Order, pk=order_id)
-    serializer = OrderUpdateSerializer(order, data=request.data, partial=True)
-
-    if serializer.is_valid():
-        order = serializer.save()
-
-        # 🔥 Synchronizácia Order ↔ OrderPayment
-        if "is_paid" in request.data:
-            if hasattr(order, "payment"):  # ak má už vytvorenú platbu
-                order.payment.is_paid = order.is_paid
-                if order.is_paid:
-                    from django.utils.timezone import now
-                    order.payment.paid_at = now()
-                    notify_order_paid.delay(order.user.id, str(order.total_amount), str(order.id))
-                else:
-                    order.payment.paid_at = None
-                order.payment.save()
-            else:
-                # ak ešte nemá platbu, ale označíš ako zaplatenú
-                from .models import OrderPayment
-                payment = OrderPayment.objects.create(
-                    order=order,
-                    user=order.user,
-                    iban=order.user.iban,
-                    variable_symbol=str(order.id),
-                    amount=order.total_amount,
-                    is_paid=True,
-                    paid_at=now(),
-                )
-                notify_order_paid.delay(order.user.id, str(payment.amount), str(payment.variable_symbol))
-
-        # 🔥 Notifikácia o zmene statusu
-        if "status" in request.data:
-            notify_order_status_changed.delay(order.user.id, order.status)
-
-        return Response(serializer.data, status=200)
-    return Response(serializer.errors, status=400)
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
