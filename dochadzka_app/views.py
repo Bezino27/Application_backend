@@ -2685,20 +2685,8 @@ def orders_bulk_update(request):
                     order.payment.is_paid = order.is_paid
                     order.payment.paid_at = now() if order.is_paid else None
                     order.payment.save()
-                else:
-                    from .models import OrderPayment
-                    payment, _ = OrderPayment.objects.get_or_create(
-                        order=order,
-                        defaults={
-                            "user": order.user,
-                            "iban": order.club.iban if order.club else "",
-                            "variable_symbol": str(order.id),
-                            "amount": order.total_amount,
-                            "is_paid": order.is_paid,
-                            "paid_at": now() if order.is_paid else None,
-                        },
-                    )
 
+   
                 # 🔔 notifikácia IBA ak sa zmenilo na True
                 if not old_is_paid and order.is_paid:
                     from .tasks import notify_order_paid
