@@ -601,7 +601,11 @@ class ClubOrderReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = "__all__"
-
+        def get_iban(self, obj):
+            payment = getattr(obj, "payment", None)
+            if payment:
+                return payment.iban
+            return None
 
 # serializers.py
 class OrderPaymentSerializer(serializers.ModelSerializer):
