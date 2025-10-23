@@ -617,10 +617,16 @@ class OrderPaymentSerializer(serializers.ModelSerializer):
 
 
 class JerseyOrderSerializer(serializers.ModelSerializer):
+    iban = serializers.SerializerMethodField()
+
     class Meta:
         model = JerseyOrder
         fields = "__all__"
 
+    def get_iban(self, obj):
+        if hasattr(obj, "payment") and obj.payment:
+            return obj.payment.iban
+        return None
 
 from rest_framework import serializers
 from .models import Order
