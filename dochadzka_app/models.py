@@ -276,6 +276,7 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
     note = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    iban = models.CharField(max_length=34, blank=True)             
     is_paid = models.BooleanField(default=False)  # ← NOVÉ
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # ✅ PRIDAJ TOTO
 
@@ -314,6 +315,7 @@ class JerseyOrder(models.Model):
     jersey_size = models.CharField(max_length=5, choices=[(s, s) for s in ["XXS", "XS", "S", "M", "L", "XL", "XXL"]])
     shorts_size = models.CharField(max_length=5, choices=[(s, s) for s in ["XXS", "XS", "S", "M", "L", "XL", "XXL"]])
     number = models.PositiveIntegerField()
+    iban = models.CharField(max_length=34, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_paid = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -325,9 +327,7 @@ from django.conf import settings
 class OrderPayment(models.Model):
     order = models.OneToOneField(Order, null=True, blank=True, on_delete=models.CASCADE, related_name="payment")
     jersey_order = models.OneToOneField(JerseyOrder, null=True, blank=True, on_delete=models.CASCADE, related_name="payment")
-
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="order_payments")
-
     iban = models.CharField(max_length=34)             # IBAN pre objednávky (môže byť iný než pre členské platby)
     variable_symbol = models.CharField(max_length=20)  # VS špecifický pre túto objednávku
     amount = models.DecimalField(max_digits=10, decimal_places=2)  # suma, ktorú má užívateľ zaplatiť
