@@ -594,6 +594,7 @@ class ClubOrderReadSerializer(serializers.ModelSerializer):
     first_name = serializers.CharField(source="user.first_name", read_only=True)
     last_name = serializers.CharField(source="user.last_name", read_only=True)
     full_name = serializers.SerializerMethodField()
+    iban = serializers.SerializerMethodField() 
 
     def get_full_name(self, obj):
         return f"{obj.user.first_name} {obj.user.last_name}".strip()
