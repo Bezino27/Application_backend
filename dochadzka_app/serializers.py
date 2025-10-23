@@ -576,30 +576,10 @@ class OrderUpdateSerializer(serializers.ModelSerializer):
             if payment:
                 payment.is_paid = instance.is_paid
                 payment.paid_at = timezone.now() if instance.is_paid else None
-                # pre istotu zosúladíme aj ďalšie polia
-                if getattr(instance.user, "iban", None):
-                    payment.iban = instance.user.iban
                 payment.amount = instance.total_amount
                 payment.variable_symbol = str(instance.id)
                 payment.save()
-            else:
-                # platba ešte neexistuje – vytvor ju len ak je objednávka označená ako zaplatená
-                if instance.is_paid:
-                    iban = getattr(instance.user, "iban", None)
-                    if not iban:
-                        # Bez IBANu nebudeme vytvárať "zaplatenú" platbu
-                        raise serializers.ValidationError({
-                            "is_paid": "Používateľ nemá nastavený IBAN v profile – najprv ho ulož v profile."
-                        })
-                    OrderPayment.objects.create(
-                        order=instance,
-                        user=instance.user,
-                        iban=iban,
-                        variable_symbol=str(instance.id),
-                        amount=instance.total_amount or Decimal("0.00"),
-                        is_paid=True,
-                        paid_at=timezone.now(),
-                    )
+
 
         return instance
 

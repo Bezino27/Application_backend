@@ -2657,10 +2657,6 @@ def generate_payment(request, order_id):
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
 def orders_bulk_update(request):
-    """
-    Uloží viac objednávok naraz.
-    Očakáva list objektov: [{id, status, total_amount, is_paid}, ...]
-    """
     from django.utils.timezone import now
     data = request.data
     if not isinstance(data, list):
