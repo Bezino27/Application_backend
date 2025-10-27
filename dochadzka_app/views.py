@@ -2208,6 +2208,7 @@ def admin_member_payments_summary(request):
 
         data.append({
             "id": user.id,
+            "username": user.username,
             "first_name": user.first_name or "",
             "last_name": user.last_name or "",
             "email": user.email or "",
