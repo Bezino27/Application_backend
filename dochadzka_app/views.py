@@ -3562,3 +3562,24 @@ def delete_account_view(request):
             {"error": f"Nepodarilo sa vymazať účet: {e}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+from .serializers import UserMeSerializer, AdminEditUserSerializer
+@api_view(["GET", "PUT"])
+@permission_classes([IsAuthenticated])
+def admin_edit_member(request, pk):
+    try:
+        user = User.objects.get(pk=pk)
+    except User.DoesNotExist:
+        return Response({"detail": "Používateľ neexistuje"}, status=404)
+
+    if request.method == "GET":
+        serializer = UserMeSerializer(user)
+        return Response(serializer.data)
+
+    if request.method == "PUT":
+        serializer = AdminEditUserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"detail": "✅ Údaje boli uložené"})
+        else:
+            return Response(serializer.errors, status=400)

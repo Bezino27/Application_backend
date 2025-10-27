@@ -64,9 +64,40 @@ class UserMeUpdateSerializer(serializers.ModelSerializer):
         ]
 
 
-# serializers.py
-from rest_framework import serializers
-from .models import Training, TrainingAttendance
+class AdminEditUserSerializer(UserMeSerializer):
+    """
+    Používa rovnaké polia ako UserMeSerializer, ale pridáva možnosť editácie
+    základných údajov + hesla.
+    """
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    class Meta(UserMeSerializer.Meta):
+        fields = UserMeSerializer.Meta.fields + ['password']
+        read_only_fields = ['roles', 'categories', 'club', 'is_new']
+
+    def update(self, instance, validated_data):
+        # štandardné údaje
+        instance.first_name = validated_data.get("first_name", instance.first_name)
+        instance.last_name = validated_data.get("last_name", instance.last_name)
+        instance.username = validated_data.get("username", instance.username)
+        instance.email = validated_data.get("email", instance.email)
+
+        # profily – ak ich máš v User modeli alebo UserProfile
+        instance.email_2 = validated_data.get("email_2", getattr(instance, "email_2", None))
+        instance.number = validated_data.get("number", getattr(instance, "number", None))
+        instance.birth_date = validated_data.get("birth_date", getattr(instance, "birth_date", None))
+        instance.height = validated_data.get("height", getattr(instance, "height", None))
+        instance.weight = validated_data.get("weight", getattr(instance, "weight", None))
+        instance.side = validated_data.get("side", getattr(instance, "side", None))
+        instance.iban = validated_data.get("iban", getattr(instance, "iban", None))
+
+        # zmena hesla (ak zadané)
+        password = validated_data.get("password")
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+        return instance
 
 
 from .models import TrainingAttendance

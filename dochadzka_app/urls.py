@@ -13,7 +13,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     upload_document, match_delete_view, assign_players_to_category, match_stats_view, match_detail_view,
                     match_nominations_view, player_nominated_matches_view, admin_member_payments, set_training_lock_hours,
                     match_participation_view, club_payment_settings_detail,club_orders_view, orders_bulk_update, announcement_readers,
-                    upload_pdf_statement_chatgpt,OrderCreateView, MyOrdersListView,delete_user_from_club,
+                    upload_pdf_statement_chatgpt,OrderCreateView, MyOrdersListView,delete_user_from_club,admin_edit_member,
                     set_preferred_role, club_payment_settings_list, member_payments, create_member_payments, payment_qr, set_vote_lock_days,
                     update_member_payment, remind_attendance_view, remind_match_attendance_view, orders_payments,generate_payment,
                     admin_member_payments_summary, new_members_without_payments,cancel_order_item_view, order_delete_view, create_jersey_order,
@@ -122,6 +122,7 @@ urlpatterns = [
     path("players-in-category/<int:category_id>/", players_in_category),
     path("formations-with-attendance/<int:category_id>/<int:training_id>/", formation_with_attendance),
     path("delete-account/", delete_account_view, name="delete-account"),
+    path("admin-member/<int:pk>/", admin_edit_member, name="admin-edit-member"),
 
 
 
