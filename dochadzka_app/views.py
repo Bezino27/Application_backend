@@ -2186,10 +2186,16 @@ def remind_match_attendance_view(request):
     return Response({"detail": "Notifikácie budú odoslané."})
 
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.contrib.auth.models import User
+from .models import MemberPayment
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def admin_member_payments_summary(request):
-    if not request.user.club:
+    if not hasattr(request.user, "club") or not request.user.club:
         return Response({"error": "Používateľ nemá priradený klub."}, status=400)
 
     club = request.user.club
@@ -2202,9 +2208,12 @@ def admin_member_payments_summary(request):
 
         data.append({
             "id": user.id,
-            "name": f"{user.first_name} {user.last_name}".strip() or user.username,
-            "birth_date": user.birth_date,
-            "number": user.number,
+            "first_name": user.first_name or "",
+            "last_name": user.last_name or "",
+            "email": user.email or "",
+            "email_2": getattr(user, "email_2", None) or getattr(user, "userprofile", None) and getattr(user.userprofile, "email_2", ""),
+            "birth_date": getattr(user, "birth_date", None) or getattr(user, "userprofile", None) and getattr(user.userprofile, "birth_date", None),
+            "number": getattr(user, "number", None) or getattr(user, "userprofile", None) and getattr(user.userprofile, "number", ""),
             "all_payments_paid": all_paid,
         })
 
