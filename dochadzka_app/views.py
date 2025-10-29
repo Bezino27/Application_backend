@@ -179,25 +179,14 @@ def player_trainings_view(request):
     # Získaj kategórie, kde je hráč
     categories = Category.objects.filter(club=club, user_roles__user=user).distinct()
 
-    # Aktuálny čas
-    from django.utils import timezone
-    now = timezone.now()
-
-    # Tréningy, ktoré ešte len budú
-    trainings = (
-        Training.objects.filter(
-            category__in=categories,
-            club=club,
-            date__gte=now,  # ⬅️ pridali sme filter na budúce tréningy
-        )
-        .select_related('category')
-        .prefetch_related('attendances')
-        .order_by('date')
-    )
+    # Tréningy + optimalizované načítanie FK a M2M
+    trainings = Training.objects.filter(
+        category__in=categories,
+        club=club
+    ).select_related('category').prefetch_related('attendances').order_by('date')
 
     serializer = TrainingSerializer(trainings, many=True, context={'request': request})
     return Response(serializer.data)
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
