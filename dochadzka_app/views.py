@@ -3718,40 +3718,47 @@ from rest_framework.response import Response
 def coach_trainings_view_optimalization(request):
     """
     Vracia tréningy trénera podľa jeho kategórií.
-    Voliteľný query parameter:
-      ?month=0-11 → vráti tréningy z daného mesiaca.
-    Ak mesiac nie je zadaný, vráti len budúce tréningy.
+    ?season=2024/2025  (voliteľné)
+    ?month=0-11        (voliteľné)
     """
+    from datetime import datetime
+    from django.utils import timezone
+
     user = request.user
     club = user.club
     now = timezone.now()
     month_param = request.GET.get("month")
+    season_param = request.GET.get("season")
 
-    # Získaj kategórie, kde má používateľ rolu coach
     coach_categories = Category.objects.filter(
         club=club,
         user_roles__user=user,
         user_roles__role="coach"
     ).distinct()
 
-    # Základný queryset
-    trainings = Training.objects.filter(
-        category__in=coach_categories,
-        club=club
-    )
+    trainings = Training.objects.filter(category__in=coach_categories, club=club)
 
-    # 🔹 Ak je zadaný mesiac → filter na daný mesiac
+    # Filter podľa sezóny
+    if season_param:
+        try:
+            start_year, end_year = season_param.split("/")
+            start = datetime(int(start_year), 6, 1, tzinfo=timezone.utc)
+            end = datetime(int(end_year), 5, 31, 23, 59, tzinfo=timezone.utc)
+            trainings = trainings.filter(date__range=(start, end))
+        except ValueError:
+            pass
+
+    # Filter podľa mesiaca
     if month_param is not None:
         try:
             month = int(month_param)
-            # Pythonovské mesiace 0–11 → DB používa 1–12
             if 0 <= month <= 11:
                 trainings = trainings.filter(date__month=month + 1)
         except ValueError:
-            pass  # ignoruj neplatnú hodnotu
+            pass
 
-    # 🔹 Ak mesiac nie je zadaný → len budúce tréningy
-    else:
+    # Ak nie sú filtre → len budúce tréningy
+    if not month_param and not season_param:
         trainings = trainings.filter(date__gte=now)
 
     trainings = trainings.select_related("category").prefetch_related("attendances").order_by("date")
