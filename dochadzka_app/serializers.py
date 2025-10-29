@@ -307,11 +307,13 @@ from django.utils import timezone
 from .models import MatchParticipation
 
 class MatchParticipationCreateSerializer(serializers.ModelSerializer):
+    reason = serializers.CharField(required=False, allow_blank=True, allow_null=True)  # 🆕 pridaj pole
+
     class Meta:
         model = MatchParticipation
-        fields = ['match', 'confirmed']
+        fields = ['match', 'confirmed', 'reason']  # 🆕 pridaj reason
 
-    def validate(self, data):                
+    def validate(self, data):
         user = self.context['request'].user
         lock_days = getattr(user.club, "vote_lock_days", 0)  # ← ber z klubu, default 0
 
@@ -324,13 +326,19 @@ class MatchParticipationCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         user = self.context['request'].user
+        reason = validated_data.get('reason', None)  # 🆕 zober reason z requestu
+
         participation, _ = MatchParticipation.objects.update_or_create(
             user=user,
             match=validated_data['match'],
-            defaults={'confirmed': validated_data['confirmed'], 'club': user.club}
+            defaults={
+                'confirmed': validated_data['confirmed'],
+                'club': user.club,
+                'reason': reason,  # 🆕 uložíme dôvod
+                'responded_at': timezone.now(),
+            },
         )
         return participation
-
 
 class MatchCreateSerializer(serializers.ModelSerializer):
     class Meta:

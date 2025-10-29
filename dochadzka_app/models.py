@@ -129,6 +129,7 @@ class MatchParticipation(models.Model):
                              related_name='match_participations')  # oprava
     confirmed = models.BooleanField(default=False)
     responded_at = models.DateTimeField(null=True, blank=True)  
+    reason = models.CharField(max_length=255, blank=True, null=True)  # 🆕 pridané pole
 
     class Meta:
         unique_together = ('match', 'user')
