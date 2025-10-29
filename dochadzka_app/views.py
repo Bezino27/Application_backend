@@ -3643,3 +3643,67 @@ def player_matches_filtered_view(request):
         import traceback
         traceback.print_exc()
         return Response({"error": str(e)}, status=500)
+    
+
+
+
+
+from datetime import datetime
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import Training, Category
+from .serializers import TrainingSerializer
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def player_trainings_history_view_optimalization(request):
+    """
+    Vracia históriu tréningov hráča, vrátane tých, kde má attendance,
+    s možnosťou filtrovať podľa sezóny a mesiaca:
+    ?season=2024/2025&month=9
+    """
+    user = request.user
+    club = user.club
+    now = timezone.now()
+
+    # ✅ Filtrovanie podľa sezóny
+    season_param = request.GET.get("season")
+    month_param = request.GET.get("month")
+
+    # aktuálne kategórie hráča
+    current_categories = Category.objects.filter(user_roles__user=user, user_roles__role="player")
+
+    # tréningy z kategórií a tie, kde má attendance
+    trainings_from_roles = Training.objects.filter(club=club, category__in=current_categories)
+    trainings_from_attendance = Training.objects.filter(club=club, attendances__user=user)
+
+    trainings = (trainings_from_roles | trainings_from_attendance).select_related(
+        "category"
+    ).prefetch_related(
+        "attendances"
+    ).distinct()
+
+    # ✅ filter podľa sezóny (napr. season=2024/2025)
+    if season_param:
+        try:
+            start_year, end_year = season_param.split("/")
+            start = datetime(int(start_year), 6, 1, tzinfo=timezone.utc)
+            end = datetime(int(end_year), 5, 31, 23, 59, tzinfo=timezone.utc)
+            trainings = trainings.filter(date__range=(start, end))
+        except ValueError:
+            pass  # ak zlyhá formát, nič sa nefiltruje
+
+    # ✅ filter podľa mesiaca (0–11)
+    if month_param is not None:
+        try:
+            month = int(month_param)
+            trainings = trainings.filter(date__month=month + 1 if month < 11 else 12)
+        except ValueError:
+            pass
+
+    trainings = trainings.order_by("date")
+
+    serializer = TrainingSerializer(trainings, many=True, context={"request": request})
+    return Response(serializer.data)
