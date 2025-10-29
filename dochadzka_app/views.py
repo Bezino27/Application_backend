@@ -3712,6 +3712,7 @@ from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.utils.timezone import make_aware
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -3721,9 +3722,6 @@ def coach_trainings_view_optimalization(request):
     ?season=2024/2025  (voliteľné)
     ?month=0-11        (voliteľné)
     """
-    from datetime import datetime
-    from django.utils import timezone
-
     user = request.user
     club = user.club
     now = timezone.now()
@@ -3738,17 +3736,17 @@ def coach_trainings_view_optimalization(request):
 
     trainings = Training.objects.filter(category__in=coach_categories, club=club)
 
-    # Filter podľa sezóny
+    # 🔹 Filter podľa sezóny
     if season_param:
         try:
             start_year, end_year = season_param.split("/")
-            start = datetime(int(start_year), 6, 1, tzinfo=timezone.utc)
-            end = datetime(int(end_year), 5, 31, 23, 59, tzinfo=timezone.utc)
+            start = make_aware(datetime(int(start_year), 6, 1, 0, 0))
+            end = make_aware(datetime(int(end_year), 5, 31, 23, 59))
             trainings = trainings.filter(date__range=(start, end))
-        except ValueError:
-            pass
+        except Exception as e:
+            print("⚠️ Season filter error:", e)
 
-    # Filter podľa mesiaca
+    # 🔹 Filter podľa mesiaca
     if month_param is not None:
         try:
             month = int(month_param)
@@ -3757,7 +3755,7 @@ def coach_trainings_view_optimalization(request):
         except ValueError:
             pass
 
-    # Ak nie sú filtre → len budúce tréningy
+    # 🔹 Ak nie sú filtre → len budúce tréningy
     if not month_param and not season_param:
         trainings = trainings.filter(date__gte=now)
 
