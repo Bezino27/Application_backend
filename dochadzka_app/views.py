@@ -3660,22 +3660,16 @@ from .serializers import TrainingSerializer
 @permission_classes([IsAuthenticated])
 def player_trainings_history_view_optimalization(request):
     """
-    Vracia históriu tréningov hráča, vrátane tých, kde má attendance,
-    s možnosťou filtrovať podľa sezóny a mesiaca:
+    Vracia históriu tréningov hráča s možnosťou filtrovať podľa sezóny a mesiaca
     ?season=2024/2025&month=9
     """
     user = request.user
     club = user.club
-    now = timezone.now()
 
-    # ✅ Filtrovanie podľa sezóny
     season_param = request.GET.get("season")
     month_param = request.GET.get("month")
 
-    # aktuálne kategórie hráča
     current_categories = Category.objects.filter(user_roles__user=user, user_roles__role="player")
-
-    # tréningy z kategórií a tie, kde má attendance
     trainings_from_roles = Training.objects.filter(club=club, category__in=current_categories)
     trainings_from_attendance = Training.objects.filter(club=club, attendances__user=user)
 
@@ -3685,25 +3679,28 @@ def player_trainings_history_view_optimalization(request):
         "attendances"
     ).distinct()
 
-    # ✅ filter podľa sezóny (napr. season=2024/2025)
+    # ✅ Filter podľa sezóny
     if season_param:
         try:
             start_year, end_year = season_param.split("/")
-            start = datetime(int(start_year), 6, 1, tzinfo=timezone.utc)
-            end = datetime(int(end_year), 5, 31, 23, 59, tzinfo=timezone.utc)
+            start = timezone.make_aware(datetime(int(start_year), 6, 1))
+            end = timezone.make_aware(datetime(int(end_year), 5, 31, 23, 59))
             trainings = trainings.filter(date__range=(start, end))
         except ValueError:
-            pass  # ak zlyhá formát, nič sa nefiltruje
+            pass
 
-    # ✅ filter podľa mesiaca (0–11)
+    # ✅ Filter podľa mesiaca
     if month_param is not None:
         try:
             month = int(month_param)
-            trainings = trainings.filter(date__month=month + 1 if month < 11 else 12)
+            if month >= 0:  # -1 = všetky
+                trainings = trainings.filter(date__month=month + 1)
         except ValueError:
             pass
 
     trainings = trainings.order_by("date")
+
+    print(f"[DEBUG] season={season_param}, month={month_param}, count={trainings.count()}")
 
     serializer = TrainingSerializer(trainings, many=True, context={"request": request})
     return Response(serializer.data)
