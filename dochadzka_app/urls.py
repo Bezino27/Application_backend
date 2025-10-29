@@ -14,7 +14,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     match_nominations_view, player_nominated_matches_view, admin_member_payments, set_training_lock_hours,
                     match_participation_view, club_payment_settings_detail,club_orders_view, orders_bulk_update, announcement_readers,
                     upload_pdf_statement_chatgpt,OrderCreateView, MyOrdersListView,delete_user_from_club,admin_edit_member,
-                    set_preferred_role, club_payment_settings_list, member_payments, create_member_payments, payment_qr, set_vote_lock_days, matches_filtered_view,
+                    set_preferred_role, club_payment_settings_list, member_payments, create_member_payments, payment_qr, set_vote_lock_days, player_matches_filtered_view,
                     update_member_payment, remind_attendance_view, remind_match_attendance_view, orders_payments,generate_payment,
                     admin_member_payments_summary, new_members_without_payments,cancel_order_item_view, order_delete_view, create_jersey_order,
                     check_number, jersey_orders_list, jersey_order_delete_view, jersey_orders_bulk_update, generate_jersey_payment, create_order,
@@ -123,7 +123,7 @@ urlpatterns = [
     path("formations-with-attendance/<int:category_id>/<int:training_id>/", formation_with_attendance),
     path("delete-account/", delete_account_view, name="delete-account"),
     path("admin-member/<int:pk>/", admin_edit_member, name="admin-edit-member"),
-    path("matches_filtered/", matches_filtered_view, name="matches_filtered"),
+    path("matches_filtered/", player_matches_filtered_view, name="matches_filtered"),
 
 
 

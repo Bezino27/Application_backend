@@ -3569,36 +3569,66 @@ from django.utils import timezone
 from django.db.models import Q
 from .models import Match
 from .serializers import MatchSerializer
+from itertools import chain
+from operator import attrgetter
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import Match, MatchParticipation
+from .serializers import MatchSerializer
 
-@api_view(["GET"])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def matches_filtered_view(request):
+def player_matches_filtered_view(request):
     """
-    Nový endpoint, ktorý vracia zápasy podľa filtra:
+    Endpoint, ktorý vracia zápasy hráča podľa filtra:
     ?filter=NEODOHRANÉ | ODOHRANÉ | VŠETKY
     """
     user = request.user
-    filter_type = request.GET.get("filter", "NEODOHRANÉ").upper()
-    now = timezone.now()
+    try:
+        filter_type = request.GET.get('filter', 'NEODOHRANÉ').upper()
+        now = timezone.now()
 
-    # Základný queryset - zápasy, kde má používateľ rolu hráča alebo záznam účasti
-    qs = Match.objects.filter(
-        Q(category__in=user.assigned_categories.all()) |
-        Q(participations__user=user)
-    ).distinct()
+        # 1️⃣ Získaj kategórie, kde má používateľ rolu hráča
+        categories = user.roles.filter(role='player').values_list('category_id', flat=True)
 
-    if filter_type == "NEODOHRANÉ":
-        qs = qs.filter(date__gte=now)
-    elif filter_type == "ODOHRANÉ":
-        qs = qs.filter(date__lt=now)
-    # "VŠETKY" = bez filtra
+        # 2️⃣ Zápasy v týchto kategóriách
+        matches = Match.objects.filter(category_id__in=categories)
 
-    qs = qs.order_by("date")
+        # 3️⃣ Zápasy, kde má používateľ záznam účasti
+        participations = MatchParticipation.objects.filter(user=user).select_related('match')
+        participated_matches = Match.objects.filter(id__in=participations.values_list('match_id', flat=True))
 
-    serializer = MatchSerializer(qs, many=True, context={"request": request})
-    vote_lock_days = getattr(user.club, "vote_lock_days", 0) if hasattr(user, "club") else 0
+        # 4️⃣ Spojenie a odstránenie duplicít
+        combined = list(chain(matches, participated_matches))
+        unique_matches_dict = {match.id: match for match in combined}
+        unique_matches = list(unique_matches_dict.values())
 
-    return Response({
-        "matches": serializer.data,
-        "vote_lock_days": vote_lock_days,
-    })
+        # 5️⃣ Filtrovanie podľa dátumu
+        if filter_type == "NEODOHRANÉ":
+            filtered_matches = [m for m in unique_matches if m.date >= now]
+        elif filter_type == "ODOHRANÉ":
+            filtered_matches = [m for m in unique_matches if m.date < now]
+        else:
+            filtered_matches = unique_matches
+
+        # 6️⃣ Zoradenie podľa dátumu (najbližšie hore)
+        sorted_matches = sorted(filtered_matches, key=attrgetter('date'))
+
+        # 7️⃣ Serializácia
+        serializer = MatchSerializer(sorted_matches, many=True, context={'request': request})
+
+        # 8️⃣ Lock days
+        club = getattr(user, 'club', None)
+        vote_lock_days = getattr(club, 'vote_lock_days', 0) if club else 0
+
+        return Response({
+            "matches": serializer.data,
+            "vote_lock_days": vote_lock_days
+        })
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({"error": str(e)}, status=500)
