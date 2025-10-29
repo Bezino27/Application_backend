@@ -3558,3 +3558,47 @@ def admin_edit_member(request, pk):
             return Response({"detail": "✅ Údaje boli uložené"})
         else:
             return Response(serializer.errors, status=400)
+
+
+
+# views.py
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.utils import timezone
+from django.db.models import Q
+from .models import Match
+from .serializers import MatchSerializer
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def matches_filtered_view(request):
+    """
+    Nový endpoint, ktorý vracia zápasy podľa filtra:
+    ?filter=NEODOHRANÉ | ODOHRANÉ | VŠETKY
+    """
+    user = request.user
+    filter_type = request.GET.get("filter", "NEODOHRANÉ").upper()
+    now = timezone.now()
+
+    # Základný queryset - zápasy, kde má používateľ rolu hráča alebo záznam účasti
+    qs = Match.objects.filter(
+        Q(category__in=user.assigned_categories.all()) |
+        Q(participations__user=user)
+    ).distinct()
+
+    if filter_type == "NEODOHRANÉ":
+        qs = qs.filter(date__gte=now)
+    elif filter_type == "ODOHRANÉ":
+        qs = qs.filter(date__lt=now)
+    # "VŠETKY" = bez filtra
+
+    qs = qs.order_by("date")
+
+    serializer = MatchSerializer(qs, many=True, context={"request": request})
+    vote_lock_days = getattr(user.club, "vote_lock_days", 0) if hasattr(user, "club") else 0
+
+    return Response({
+        "matches": serializer.data,
+        "vote_lock_days": vote_lock_days,
+    })
