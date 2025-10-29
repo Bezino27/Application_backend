@@ -8,7 +8,7 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     training_detail_view, coach_trainings_view, change_password_view, chat_messages_view, announcement_admin_readers, announcements_admin_list,
                     users_in_club, assign_role, remove_role, categories_in_club, coach_players_view, mark_announcement_read, create_announcement, announcements_list,
                     training_update_view, club_detail, coach_attendance_summary, update_match_view, categories_admin, delete_category,
-                    all_players_with_roles, player_trainings_history_view, positions_list, player_matches_view,
+                    all_players_with_roles, player_trainings_history_view, positions_list, player_matches_view, coach_trainings_view_optimalization,
                     create_match_participation, create_match_view, jersey_numbers_view, club_documents_view, password_reset_generate_for_user, password_reset_request,
                     upload_document, match_delete_view, assign_players_to_category, match_stats_view, match_detail_view,player_trainings_history_view_optimalization,
                     match_nominations_view, player_nominated_matches_view, admin_member_payments, set_training_lock_hours,
@@ -125,6 +125,7 @@ urlpatterns = [
     path("admin-member/<int:pk>/", admin_edit_member, name="admin-edit-member"),
     path("matches_filtered/", player_matches_filtered_view, name="matches_filtered"),
     path("trainings_optimalization/history/", player_trainings_history_view_optimalization, name="player_trainings_history_view_optimalization"),
+    path('coach-trainings-optimalization/', coach_trainings_view_optimalization),
 
 
 

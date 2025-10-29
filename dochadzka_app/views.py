@@ -504,7 +504,7 @@ def coach_players_attendance_view(request):
 
     return Response(response_data)
 
-
+# VYMAZAT PO UPDATE COACH TRENINGY
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def coach_trainings_view(request):
@@ -898,7 +898,7 @@ def all_players_with_roles(request):
         })
     return Response(result)
 
-
+#VYMAZAT PO UPDATE, TRENINGY SCREEN V HRACOVI
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def player_trainings_history_view(request):
@@ -3701,6 +3701,60 @@ def player_trainings_history_view_optimalization(request):
     trainings = trainings.order_by("date")
 
     print(f"[DEBUG] season={season_param}, month={month_param}, count={trainings.count()}")
+
+    serializer = TrainingSerializer(trainings, many=True, context={"request": request})
+    return Response(serializer.data)
+
+
+
+from datetime import datetime
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def coach_trainings_view_optimalization(request):
+    """
+    Vracia tréningy trénera podľa jeho kategórií.
+    Voliteľný query parameter:
+      ?month=0-11 → vráti tréningy z daného mesiaca.
+    Ak mesiac nie je zadaný, vráti len budúce tréningy.
+    """
+    user = request.user
+    club = user.club
+    now = timezone.now()
+    month_param = request.GET.get("month")
+
+    # Získaj kategórie, kde má používateľ rolu coach
+    coach_categories = Category.objects.filter(
+        club=club,
+        user_roles__user=user,
+        user_roles__role="coach"
+    ).distinct()
+
+    # Základný queryset
+    trainings = Training.objects.filter(
+        category__in=coach_categories,
+        club=club
+    )
+
+    # 🔹 Ak je zadaný mesiac → filter na daný mesiac
+    if month_param is not None:
+        try:
+            month = int(month_param)
+            # Pythonovské mesiace 0–11 → DB používa 1–12
+            if 0 <= month <= 11:
+                trainings = trainings.filter(date__month=month + 1)
+        except ValueError:
+            pass  # ignoruj neplatnú hodnotu
+
+    # 🔹 Ak mesiac nie je zadaný → len budúce tréningy
+    else:
+        trainings = trainings.filter(date__gte=now)
+
+    trainings = trainings.select_related("category").prefetch_related("attendances").order_by("date")
 
     serializer = TrainingSerializer(trainings, many=True, context={"request": request})
     return Response(serializer.data)
