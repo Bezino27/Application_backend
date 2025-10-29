@@ -398,9 +398,17 @@ class MatchDetailSerializer(serializers.ModelSerializer):
         qs = match.participations.filter(confirmed=True).select_related("user")
         return MatchParticipantSerializer(qs, many=True).data
 
+
     def get_players_absent(self, match):
         qs = match.participations.filter(confirmed=False).select_related("user")
-        return MatchParticipantSerializer(qs, many=True).data
+        data = MatchParticipantSerializer(qs, many=True).data
+
+        # 🆕 doplnenie reason pre neprítomných hráčov
+        for item, participation in zip(data, qs):
+            item["reason"] = participation.reason or None
+
+        return data
+
 
     def get_players_unknown(self, match):
         category = match.category
