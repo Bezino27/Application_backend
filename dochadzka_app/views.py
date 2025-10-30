@@ -989,24 +989,46 @@ def player_matches_view(request):
         return Response({"error": str(e)}, status=500)
 
 
-@api_view(['GET', 'POST'])
+from itertools import chain
+from operator import attrgetter
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.utils import timezone
+from .models import Match, MatchParticipation
+from .serializers import MatchSerializer
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def coach_matches_view(request):
+    """
+    Vracia zápasy trénera podľa jeho kategórií + účasti.
+    Podporuje query parameter ?filter=upcoming|past|all
+    (predvolený = upcoming)
+    """
     user = request.user
     try:
         categories = user.roles.filter(role='coach').values_list('category_id', flat=True)
-
         matches = Match.objects.filter(category_id__in=categories)
         participations = MatchParticipation.objects.filter(user=user).select_related('match')
         participated_matches = Match.objects.filter(id__in=participations.values_list('match_id', flat=True))
 
+        # Spojenie a odstránenie duplicít
         combined = list(chain(matches, participated_matches))
-
-        # Odstránenie duplicít podľa ID
         unique_matches_dict = {match.id: match for match in combined}
         unique_matches = list(unique_matches_dict.values())
 
-        # Zoradenie podľa dátumu zostupne
+        # 🔹 Filtrovanie podľa času
+        now = timezone.now()
+        filter_param = request.GET.get('filter', 'upcoming')
+
+        if filter_param == 'upcoming':
+            unique_matches = [m for m in unique_matches if m.date >= now]
+        elif filter_param == 'past':
+            unique_matches = [m for m in unique_matches if m.date < now]
+        # ak "all" → nenecháme žiadny filter
+
+        # 🔹 Zoradenie
         sorted_matches = sorted(unique_matches, key=attrgetter('date'), reverse=True)
 
         serializer = MatchSerializer(sorted_matches, many=True, context={'request': request})
@@ -1016,6 +1038,7 @@ def coach_matches_view(request):
         import traceback
         traceback.print_exc()
         return Response({"error": str(e)}, status=500)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
