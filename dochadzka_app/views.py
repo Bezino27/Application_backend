@@ -1079,6 +1079,7 @@ def create_match_view(request):
                     "opponent": request.data.get("opponent"),
                     "description": request.data.get("description"),
                     "category": category_id,
+                    "is_home": request.data.get("is_home", False),
                 }
 
                 serializer = MatchSerializer(data=match_data, context={"request": request})

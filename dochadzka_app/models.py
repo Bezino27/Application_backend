@@ -87,10 +87,13 @@ class Match(models.Model):
     opponent = models.CharField(max_length=100)
     location = models.CharField(max_length=200, blank=True)
     description = models.TextField(blank=True)
-    video_link = models.URLField(blank=True, null=True)  
+    video_link = models.URLField(blank=True, null=True)
+    is_home = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"Zápas {self.category.name} vs {self.opponent} - {self.date.strftime('%Y-%m-%d %H:%M')}"
+        home_away = "Doma" if self.is_home else "Vonku"
+        return f"{home_away}: {self.category.name} vs {self.opponent} - {self.date.strftime('%Y-%m-%d %H:%M')}"
+
 
 class UserCategoryRole(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='roles')  # oprava
