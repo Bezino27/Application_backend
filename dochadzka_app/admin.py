@@ -95,9 +95,9 @@ class TrainingAttendanceAdmin(admin.ModelAdmin):
 
 @admin.register(Match)
 class MatchAdmin(admin.ModelAdmin):
-    list_display = ('category', 'date', 'opponent', 'location')
-    list_filter = ('category__club', 'category')
-    search_fields = ('category__name', 'opponent', 'location')
+    list_display = ('category', 'date', 'opponent', 'location', 'is_home')
+    list_filter = ('category__club', 'category', 'is_home')
+    search_fields = ('category__name', 'opponent', 'location', 'is_home')
 
 
 @admin.register(MatchParticipation)

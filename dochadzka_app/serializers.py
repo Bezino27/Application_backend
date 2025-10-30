@@ -282,7 +282,7 @@ class MatchSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'date', 'club_name', 'location', 'opponent',
             'description', 'category', 'category_name', 'user_status',
-            'rating', 'plus_minus', 'video_link'
+            'rating', 'plus_minus', 'video_link','is_home', 
         ]
 
     def get_user_status(self, obj):
