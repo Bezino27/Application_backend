@@ -1835,13 +1835,13 @@ def player_attendance_detail(request, player_id):
             training__in=all_trainings,
             status="absent"
         )
-        .values("reason__name")
+        .values("reason")
         .annotate(count=Count("id"))
         .order_by("-count")
     )
 
-    response_data["absence_reasons"] = [
-        {"reason": item["reason__name"] or "Nezadané", "count": item["count"]}
+    response_data["reason"] = [
+        {"reason": item["reason"] or "Nezadané", "count": item["count"]}
         for item in absence_stats
     ]
 
