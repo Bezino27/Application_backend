@@ -1615,11 +1615,11 @@ from rest_framework.response import Response
 from django.db.models import Count, Q
 from .models import Training, TrainingAttendance
 from .models import User
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def coach_attendance_summary(request):
     user = request.user
+    trainings = Training.objects.none()
 
     # 🔹 1. Získaj všetky kategórie, kde má tréner rolu 'coach'
     coach_roles = user.roles.filter(role="coach")
@@ -1628,9 +1628,13 @@ def coach_attendance_summary(request):
     if not category_ids:
         return Response([])
 
-    # 🔹 2. Načítaj hráčov v týchto kategóriách
-    player_filter = Q(roles__category__id__in=category_ids, roles__role="player")
+    # 🔹 2. Filtrovanie parametrov (musí byť PRED použitím)
+    month = request.GET.get("month")
+    season = request.GET.get("season")
+    category_param = request.GET.get("category")
 
+    # 🔹 3. Načítaj hráčov podľa filtra
+    player_filter = Q(roles__category__id__in=category_ids, roles__role="player")
     if category_param:
         player_filter &= Q(roles__category__name=category_param)
 
@@ -1639,11 +1643,8 @@ def coach_attendance_summary(request):
         .distinct()
         .select_related("position")
     )
-    # 🔹 3. Filtrovanie podľa query parametrov
-    month = request.GET.get("month")
-    season = request.GET.get("season")
-    category_param = request.GET.get("category")
 
+    # 🔹 4. Filtrovanie tréningov
     training_filter = Q(category_id__in=category_ids)
 
     if category_param:
@@ -1661,14 +1662,6 @@ def coach_attendance_summary(request):
             training_filter &= Q(date__year__in=[start_year, end_year])
         except ValueError:
             pass
-
-    # 🔹 4. Získaj všetky tréningy pre dané kategórie a obdobie
-    trainings = (
-        Training.objects.filter(training_filter)
-        .select_related("category")
-        .only("id", "category_id", "category__name", "date")
-    )
-
     if not trainings.exists():
         return Response([])
 
