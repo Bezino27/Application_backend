@@ -1615,11 +1615,13 @@ from rest_framework.response import Response
 from django.db.models import Count, Q
 from .models import Training, TrainingAttendance
 from .models import User
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def coach_attendance_summary(request):
     user = request.user
-    trainings = Training.objects.none()
+    trainings = Training.objects.none()  # len pre typový check (Pylance)
 
     # 🔹 1. Získaj všetky kategórie, kde má tréner rolu 'coach'
     coach_roles = user.roles.filter(role="coach")
@@ -1628,7 +1630,7 @@ def coach_attendance_summary(request):
     if not category_ids:
         return Response([])
 
-    # 🔹 2. Filtrovanie parametrov (musí byť PRED použitím)
+    # 🔹 2. Filtrovanie parametrov
     month = request.GET.get("month")
     season = request.GET.get("season")
     category_param = request.GET.get("category")
@@ -1662,10 +1664,19 @@ def coach_attendance_summary(request):
             training_filter &= Q(date__year__in=[start_year, end_year])
         except ValueError:
             pass
+
+    # ✅ Reálne načítanie tréningov
+    trainings = (
+        Training.objects.filter(training_filter)
+        .select_related("category")
+        .only("id", "category_id", "category__name", "date")
+    )
+
+    # Ak nie sú žiadne tréningy, vráť prázdnu odpoveď
     if not trainings.exists():
         return Response([])
 
-    # ✅ Oprava: použijeme dict comprehension namiesto .in_bulk()
+    # ✅ Počet tréningov v každej kategórii
     category_training_counts = {
         item["category_id"]: item["total_count"]
         for item in trainings.values("category_id").annotate(total_count=Count("id"))
@@ -1728,6 +1739,10 @@ def coach_attendance_summary(request):
             total_percent_sum += percent
             total_categories += 1
 
+        # 🔸 Ak hráč nemá žiadne kategórie po filtrovaní, preskoč
+        if not player_data["categories"]:
+            continue
+
         if total_categories > 0:
             player_data["overall_attendance"] = round(
                 total_percent_sum / total_categories, 1
@@ -1739,7 +1754,6 @@ def coach_attendance_summary(request):
     result.sort(key=lambda p: int(p.get("number") or 0))
 
     return Response(result)
-
 
 
 from datetime import date, datetime
