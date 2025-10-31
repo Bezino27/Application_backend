@@ -1616,7 +1616,6 @@ from django.db.models import Count, Q
 from .models import Training, TrainingAttendance
 from .models import User
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def coach_attendance_summary(request):
@@ -1624,7 +1623,10 @@ def coach_attendance_summary(request):
 
     # 🔹 1. Získaj všetky kategórie, kde má tréner rolu 'coach'
     coach_roles = user.roles.filter(role="coach")
-    category_ids = coach_roles.values_list("category__id", flat=True).distinct()
+    category_ids = list(coach_roles.values_list("category__id", flat=True).distinct())
+
+    if not category_ids:
+        return Response([])
 
     # 🔹 2. Načítaj hráčov v týchto kategóriách
     players = (
@@ -1644,10 +1646,7 @@ def coach_attendance_summary(request):
     training_filter = Q(category_id__in=category_ids)
 
     if category_param:
-        try:
-            training_filter &= Q(category__name=category_param)
-        except ValueError:
-            pass
+        training_filter &= Q(category__name=category_param)
 
     if month:
         try:
@@ -1669,19 +1668,21 @@ def coach_attendance_summary(request):
         .only("id", "category_id", "category__name", "date")
     )
 
+    if not trainings.exists():
+        return Response([])
+
+    # ✅ Oprava: použijeme dict comprehension namiesto .in_bulk()
+    category_training_counts = {
+        item["category_id"]: item["total_count"]
+        for item in trainings.values("category_id").annotate(total_count=Count("id"))
+    }
+
     # 🔹 5. Vyber všetky attendance záznamy v tomto rozsahu
     attendance_qs = TrainingAttendance.objects.filter(
         training__in=trainings, user__in=players
     ).values("user_id", "training__category_id", "status")
 
-    # 🔹 6. Predspracuj počet tréningov a účastí
-    category_training_counts = (
-        trainings.values("category_id")
-        .annotate(total_count=Count("id"))
-        .in_bulk(field_name="category_id")
-    )
-
-    # 🔹 7. Počítaj počet "present" účastí pre každého hráča podľa kategórie
+    # 🔹 6. Počítaj počet "present" účastí pre každého hráča podľa kategórie
     attendance_map = {}
     for att in attendance_qs:
         if att["status"] != "present":
@@ -1689,7 +1690,7 @@ def coach_attendance_summary(request):
         key = (att["user_id"], att["training__category_id"])
         attendance_map[key] = attendance_map.get(key, 0) + 1
 
-    # 🔹 8. Zloženie výsledku
+    # 🔹 7. Zloženie výsledku
     result = []
     for player in players:
         player_data = {
@@ -1708,11 +1709,10 @@ def coach_attendance_summary(request):
 
         for role in player_roles:
             cat_id = role.category_id
-            cat_trainings = category_training_counts.get(cat_id)
-            if not cat_trainings:
+            if not cat_id or cat_id not in category_training_counts:
                 continue
 
-            total_trainings = cat_trainings["total_count"]
+            total_trainings = category_training_counts.get(cat_id, 0)
             present_count = attendance_map.get((player.id, cat_id), 0)
 
             if total_trainings == 0:
@@ -1722,11 +1722,9 @@ def coach_attendance_summary(request):
             player_data["categories"].append(
                 {
                     "category_id": cat_id,
-                    "category_name": role.category.name,
+                    "category_name": role.category.name if role.category else None,
                     "attendance_percentage": percent,
-                    "last_training_date": trainings.filter(
-                        category_id=cat_id
-                    )
+                    "last_training_date": trainings.filter(category_id=cat_id)
                     .order_by("-date")
                     .values_list("date", flat=True)
                     .first(),
@@ -1743,7 +1741,7 @@ def coach_attendance_summary(request):
 
         result.append(player_data)
 
-    # 🔹 9. Usporiadaj hráčov podľa čísla (ak majú)
+    # 🔹 8. Usporiadaj hráčov podľa čísla (ak majú)
     result.sort(key=lambda p: int(p.get("number") or 0))
 
     return Response(result)
