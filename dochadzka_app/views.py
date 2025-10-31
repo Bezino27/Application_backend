@@ -565,6 +565,13 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
+
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
@@ -576,27 +583,43 @@ def register_user(request):
     last_name = data.get('last_name')
     birth_date = data.get('birth_date')
     club_id = data.get('club_id')
+    email = data.get('email')
+    email_2 = data.get('email_2')
 
+    # 🔹 1. Kontrola povinných polí
     if not all([username, password, password2, first_name, last_name, birth_date, club_id]):
-        return Response({'detail': 'Vyplň všetky polia.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'detail': 'Vyplň všetky povinné polia.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # 🔹 2. Overenie hesla
     if password != password2:
         return Response({'detail': 'Heslá sa nezhodujú.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    if len(password) < 8 or not any(ch.isdigit() for ch in password):
+        return Response({'detail': 'Heslo musí mať aspoň 8 znakov a obsahovať číslicu.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # 🔹 3. Overenie používateľského mena
     if User.objects.filter(username=username).exists():
         return Response({'detail': 'Používateľské meno už existuje.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # 🔹 4. Overenie klubu
     try:
         club = Club.objects.get(id=club_id)
     except Club.DoesNotExist:
         return Response({'detail': 'Zvolený klub neexistuje.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # 🔹 5. Overenie emailu (ak je zadaný)
+    if email and User.objects.filter(email=email).exists():
+        return Response({'detail': 'Tento email už je zaregistrovaný.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # 🔹 6. Vytvorenie používateľa
     user = User.objects.create_user(
         username=username,
         password=password,
         first_name=first_name,
         last_name=last_name,
         birth_date=birth_date,
+        email=email,
+        email_2=email_2,
         club=club
     )
 
