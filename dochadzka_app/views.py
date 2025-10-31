@@ -1762,6 +1762,15 @@ def coach_attendance_summary(request):
 
 from datetime import date, datetime
 
+from datetime import date
+from django.db.models import Count, Q
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import User
+from .models import Training, TrainingAttendance
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def player_attendance_detail(request, player_id):
@@ -1807,8 +1816,34 @@ def player_attendance_detail(request, player_id):
         "side": player.side,
         "position": player.position.name if player.position else None,
         "categories": [],
-        "trainings": []
+        "trainings": [],
+        "absence_reasons": []
     }
+
+    # Všetky tréningy, ktoré tréner môže vidieť
+    all_trainings = Training.objects.filter(category_id__in=coach_category_ids)
+
+    if season_start and season_end:
+        all_trainings = all_trainings.filter(date__range=(season_start, season_end))
+    if month is not None and month.isdigit():
+        all_trainings = all_trainings.filter(date__month=int(month) + 1)
+
+    # 🔹 Agregácia dôvodov neúčasti
+    absence_stats = (
+        TrainingAttendance.objects.filter(
+            user=player,
+            training__in=all_trainings,
+            status="absent"
+        )
+        .values("reason__name")
+        .annotate(count=Count("id"))
+        .order_by("-count")
+    )
+
+    response_data["absence_reasons"] = [
+        {"reason": item["reason__name"] or "Nezadané", "count": item["count"]}
+        for item in absence_stats
+    ]
 
     # pre každú kategóriu hráča, kde tréner má prístup
     for role in player_categories:
@@ -1824,7 +1859,7 @@ def player_attendance_detail(request, player_id):
 
         # aplikuj filter mesiac
         if month is not None and month.isdigit():
-            trainings = trainings.filter(date__month=int(month) + 1)  # Django 1-12
+            trainings = trainings.filter(date__month=int(month) + 1)
 
         trainings = trainings.order_by('-date')
 
@@ -1868,6 +1903,7 @@ def player_attendance_detail(request, player_id):
             })
 
     return Response(response_data)
+
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
