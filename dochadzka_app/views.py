@@ -1629,15 +1629,16 @@ def coach_attendance_summary(request):
         return Response([])
 
     # 🔹 2. Načítaj hráčov v týchto kategóriách
+    player_filter = Q(roles__category__id__in=category_ids, roles__role="player")
+
+    if category_param:
+        player_filter &= Q(roles__category__name=category_param)
+
     players = (
-        User.objects.filter(
-            roles__category__id__in=category_ids,
-            roles__role="player",
-        )
+        User.objects.filter(player_filter)
         .distinct()
         .select_related("position")
     )
-
     # 🔹 3. Filtrovanie podľa query parametrov
     month = request.GET.get("month")
     season = request.GET.get("season")
