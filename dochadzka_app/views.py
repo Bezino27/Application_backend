@@ -1608,15 +1608,88 @@ from django.db.models import Count, Q
 from .models import User
 from .models import TrainingAttendance, Training
 
-@api_view(['GET'])
+from datetime import datetime
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.db.models import Count, Q
+from .models import Training, TrainingAttendance
+from .models import User
+
+
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def coach_attendance_summary(request):
     user = request.user
-    coach_roles = user.roles.filter(role='coach')
 
-    category_ids = coach_roles.values_list('category__id', flat=True).distinct()
-    players = User.objects.filter(roles__category__id__in=category_ids, roles__role='player').distinct()
+    # 🔹 1. Získaj všetky kategórie, kde má tréner rolu 'coach'
+    coach_roles = user.roles.filter(role="coach")
+    category_ids = coach_roles.values_list("category__id", flat=True).distinct()
 
+    # 🔹 2. Načítaj hráčov v týchto kategóriách
+    players = (
+        User.objects.filter(
+            roles__category__id__in=category_ids,
+            roles__role="player",
+        )
+        .distinct()
+        .select_related("position")
+    )
+
+    # 🔹 3. Filtrovanie podľa query parametrov
+    month = request.GET.get("month")
+    season = request.GET.get("season")
+    category_param = request.GET.get("category")
+
+    training_filter = Q(category_id__in=category_ids)
+
+    if category_param:
+        try:
+            training_filter &= Q(category__name=category_param)
+        except ValueError:
+            pass
+
+    if month:
+        try:
+            training_filter &= Q(date__month=int(month))
+        except ValueError:
+            pass
+
+    if season:
+        try:
+            start_year, end_year = map(int, season.split("/"))
+            training_filter &= Q(date__year__in=[start_year, end_year])
+        except ValueError:
+            pass
+
+    # 🔹 4. Získaj všetky tréningy pre dané kategórie a obdobie
+    trainings = (
+        Training.objects.filter(training_filter)
+        .select_related("category")
+        .only("id", "category_id", "category__name", "date")
+    )
+
+    # 🔹 5. Vyber všetky attendance záznamy v tomto rozsahu
+    attendance_qs = TrainingAttendance.objects.filter(
+        training__in=trainings, user__in=players
+    ).values("user_id", "training__category_id", "status")
+
+    # 🔹 6. Predspracuj počet tréningov a účastí
+    category_training_counts = (
+        trainings.values("category_id")
+        .annotate(total_count=Count("id"))
+        .in_bulk(field_name="category_id")
+    )
+
+    # 🔹 7. Počítaj počet "present" účastí pre každého hráča podľa kategórie
+    attendance_map = {}
+    for att in attendance_qs:
+        if att["status"] != "present":
+            continue
+        key = (att["user_id"], att["training__category_id"])
+        attendance_map[key] = attendance_map.get(key, 0) + 1
+
+    # 🔹 8. Zloženie výsledku
     result = []
     for player in players:
         player_data = {
@@ -1626,42 +1699,55 @@ def coach_attendance_summary(request):
             "position": player.position.name if player.position else None,
             "number": player.number,
             "categories": [],
+            "overall_attendance": 0.0,
         }
 
-        total_percent = 0.0
+        player_roles = player.roles.filter(role="player", category_id__in=category_ids)
+        total_percent_sum = 0.0
+        total_categories = 0
 
-        # ✅ Iteruj iba cez kategórie, kde má hráč rolu hráča
-        player_category_ids = player.roles.filter(
-            role='player',
-            category__id__in=category_ids
-        ).values_list('category__id', flat=True).distinct()
-
-        for cat_id in player_category_ids:
-            trainings = Training.objects.filter(category_id=cat_id)
-            total = trainings.count()
-            present = TrainingAttendance.objects.filter(
-                user=player,
-                training__category_id=cat_id,
-                status='present'
-            ).count()
-
-            if total == 0:
+        for role in player_roles:
+            cat_id = role.category_id
+            cat_trainings = category_training_counts.get(cat_id)
+            if not cat_trainings:
                 continue
 
-            percent = round((present / total) * 100, 1)
+            total_trainings = cat_trainings["total_count"]
+            present_count = attendance_map.get((player.id, cat_id), 0)
 
-            player_data['categories'].append({
-                'category_id': cat_id,
-                'category_name': trainings.first().category.name if trainings.exists() else '',
-                'attendance_percentage': percent
-            })
+            if total_trainings == 0:
+                continue
 
-            total_percent += percent
+            percent = round((present_count / total_trainings) * 100, 1)
+            player_data["categories"].append(
+                {
+                    "category_id": cat_id,
+                    "category_name": role.category.name,
+                    "attendance_percentage": percent,
+                    "last_training_date": trainings.filter(
+                        category_id=cat_id
+                    )
+                    .order_by("-date")
+                    .values_list("date", flat=True)
+                    .first(),
+                }
+            )
 
-        player_data['overall_attendance'] = round(total_percent, 1)
+            total_percent_sum += percent
+            total_categories += 1
+
+        if total_categories > 0:
+            player_data["overall_attendance"] = round(
+                total_percent_sum / total_categories, 1
+            )
+
         result.append(player_data)
 
+    # 🔹 9. Usporiadaj hráčov podľa čísla (ak majú)
+    result.sort(key=lambda p: int(p.get("number") or 0))
+
     return Response(result)
+
 
 
 from datetime import date, datetime
