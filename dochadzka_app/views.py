@@ -1751,8 +1751,12 @@ def coach_attendance_summary(request):
         result.append(player_data)
 
     # 🔹 8. Usporiadaj hráčov podľa čísla (ak majú)
-    result.sort(key=lambda p: int(p.get("number") or 0))
-
+    result.sort(
+        key=lambda p: (
+            -p.get("overall_attendance", 0),  # zostupne podľa dochádzky
+            int(p.get("number") or 0)         # sekundárne podľa čísla
+        )
+    )
     return Response(result)
 
 
