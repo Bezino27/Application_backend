@@ -2886,7 +2886,16 @@ def create_jersey_order(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def jersey_orders_list(request, club_id: int):
-    qs = JerseyOrder.objects.filter(club_id=club_id).order_by("-created_at")
+    user = request.user
+    user_club_id = getattr(user, "club_id", None) or getattr(getattr(user, "profile", None), "club_id", None)
+
+    # ak používateľ nemá klub, alebo sa pokúša načítať iný klub → odmietni
+    if not user_club_id:
+        return Response({"detail": "Používateľ nemá priradený klub."}, status=403)
+    if user_club_id != club_id and not user.is_superuser:
+        return Response({"detail": "Nemáš oprávnenie zobraziť objednávky iného klubu."}, status=403)
+
+    qs = JerseyOrder.objects.filter(club_id=user_club_id).order_by("-created_at")
     serializer = JerseyOrderSerializer(qs, many=True)
     return Response(serializer.data)
 
