@@ -505,7 +505,7 @@ def notify_unpaid_orders(order_ids):
 
     for order in orders:
         user = order.user
-        title = "Pripomienka platby za dres 👕"
+        title = "Pripomienka platby za dres"
         body = f"Nezabudni uhradiť objednávku dresu v sume {order.amount} €."
         # ak má user expo tokeny
         if hasattr(user, "expo_tokens"):
