@@ -1,6 +1,6 @@
 # tasks.py
 from celery import shared_task
-from .models import Training
+from .models import Training,JerseyOrder
 from .models import User, Role
 from .helpers import send_push_notification  # uprav podľa tvojej štruktúry
 from .models import ExpoPushToken  # uprav podľa tvojej štruktúry
@@ -493,3 +493,24 @@ def send_announcement_notification(announcement_id, user_ids):
             count += 1
 
     return f"Sent to {count} devices"
+
+@shared_task
+def notify_unpaid_orders(order_ids):
+    """
+    Odošle push notifikáciu všetkým používateľom s nezaplatenou objednávkou dresu.
+    """
+    User = get_user_model()
+    orders = JerseyOrder.objects.filter(id__in=order_ids, is_paid=False).select_related("user")
+    count = 0
+
+    for order in orders:
+        user = order.user
+        title = "Pripomienka platby za dres 👕"
+        body = f"Nezabudni uhradiť objednávku dresu v sume {order.amount} €."
+        # ak má user expo tokeny
+        if hasattr(user, "expo_tokens"):
+            for token in user.expo_tokens.all():
+                send_push_notification(token.token, title, body)
+                count += 1
+
+    return f"📩 Sent {count} notifications to unpaid users."

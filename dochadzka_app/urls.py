@@ -2,7 +2,7 @@ from django.urls import path
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import (me_view, login_view, save_expo_push_token, register_user, chat_users_list, reset_password_confirm_custom,
-                    coach_players_attendance_view, coach_matches_view, player_attendance_detail, my_coach_categories,
+                    coach_players_attendance_view, coach_matches_view, player_attendance_detail, my_coach_categories, remind_unpaid_orders_view,
                     get_categories, player_trainings_view, add_reaction, delete_training_view, training_attendance_view,
                     set_training_attendance, list_clubs, test_push, create_training_view, user_categories_view, announcement_delete_view,
                     training_detail_view, coach_trainings_view, change_password_view, chat_messages_view, announcement_admin_readers, announcements_admin_list,
@@ -126,6 +126,7 @@ urlpatterns = [
     path("matches_filtered/", player_matches_filtered_view, name="matches_filtered"),
     path("trainings_optimalization/history/", player_trainings_history_view_optimalization, name="player_trainings_history_view_optimalization"),
     path('coach-trainings-optimalization/', coach_trainings_view_optimalization),
+    path("jersey-orders/remind-unpaid/", remind_unpaid_orders_view),
 
 
 

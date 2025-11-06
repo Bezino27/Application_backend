@@ -3942,3 +3942,28 @@ def coach_trainings_view_optimalization(request):
 
     serializer = TrainingSerializer(trainings, many=True, context={"request": request})
     return Response(serializer.data)
+
+
+
+from .tasks import notify_unpaid_orders
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def remind_unpaid_orders_view(request):
+    """
+    Spustí task, ktorý odošle pripomienky všetkým používateľom s nezaplatenými objednávkami.
+    """
+    order_ids = request.data.get('order_ids', [])
+    if not isinstance(order_ids, list):
+        return Response({"detail": "Neplatný formát – očakáva sa list order_ids."}, status=400)
+
+    unpaid_orders = JerseyOrder.objects.filter(id__in=order_ids, is_paid=False)
+    if not unpaid_orders.exists():
+        return Response({"detail": "Žiadne nezaplatené objednávky."}, status=200)
+
+    # Spusti celery task
+    notify_unpaid_orders.delay(list(unpaid_orders.values_list('id', flat=True)))
+
+    return Response({
+        "detail": f"📩 Pripomienky boli odoslané pre {unpaid_orders.count()} objednávok."
+    }, status=200)
