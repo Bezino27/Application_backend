@@ -3976,3 +3976,27 @@ def remind_unpaid_orders_view(request):
     return Response({
         "detail": f"📩 Pripomienky boli odoslané pre {unpaid_orders.count()} objednávok."
     }, status=200)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def remind_unpaid_payments(request):
+    """
+    Spustí Celery task na odoslanie pripomienok členom s neuhradenými platbami.
+    """
+    payment_ids = request.data.get('payment_ids', [])
+    if not isinstance(payment_ids, list):
+        return Response({"detail": "Neplatný formát dát."}, status=400)
+
+    from .models import MemberPayment  # podľa tvojho modelu
+    unpaid = MemberPayment.objects.filter(id__in=payment_ids, is_paid=False).select_related("user")
+
+    if not unpaid.exists():
+        return Response({"detail": "Žiadne neuhradené platby."}, status=200)
+
+    user_ids = list(unpaid.values_list("user_id", flat=True).distinct())
+
+    from .tasks import send_unpaid_payment_notifications
+    send_unpaid_payment_notifications.delay(user_ids)
+
+    return Response({"detail": f"Pripomienky boli odoslané {len(user_ids)} používateľom."})

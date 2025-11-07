@@ -514,3 +514,33 @@ def notify_unpaid_orders(order_ids):
                 count += 1
 
     return f"📩 Sent {count} notifications to unpaid users."
+
+
+from celery import shared_task
+from django.contrib.auth import get_user_model
+from .models import MemberPayment
+
+@shared_task
+def send_unpaid_payment_notifications(user_ids):
+    """
+    Odošle push notifikáciu členom, ktorí majú neuhradené platby.
+    """
+    User = get_user_model()
+    users = User.objects.filter(id__in=user_ids)
+    count = 0
+
+    for user in users:
+        unpaid = MemberPayment.objects.filter(user=user, is_paid=False)
+        if not unpaid.exists():
+            continue
+
+        total = sum(p.amount for p in unpaid)
+        title = "Pripomienka platby 💰"
+        body = f"Nezabudni uhradiť svoje klubové poplatky (spolu {total:.2f} €)."
+        
+        if hasattr(user, "expo_tokens"):
+            for token in user.expo_tokens.all():
+                send_push_notification(token.token, title, body)
+                count += 1
+
+    return f"📩 Sent {count} notifications to unpaid members."
