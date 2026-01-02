@@ -4130,9 +4130,15 @@ def _run_weekly_batch_now(schedule: TrainingSchedule):
 
     created = 0
     with transaction.atomic():
+        # ✅ generuj v rámci týždňa, kde je start (nie vždy next_week_monday)
+        week_monday = _week_start(start)
+        week_sunday = week_monday + timedelta(days=6)
+
+        # ale stále nech je to ohraničené intervalom start..end
         for item in schedule.items.all():
-            dt = _dt_for_weekday(next_week_monday, item.weekday, item.time)
+            dt = _dt_for_weekday(week_monday, item.weekday, item.time)
             dt_date = dt.date()
+
             if dt_date < start or dt_date > end:
                 continue
 
@@ -4149,12 +4155,13 @@ def _run_weekly_batch_now(schedule: TrainingSchedule):
             if was_created:
                 created += 1
 
-    # po manuálnom run posuň next_run_at rovnako ako task (o 7 dní)
+    # posuň next_run_at o 7 dní
     if schedule.next_run_at:
         schedule.next_run_at = schedule.next_run_at + timedelta(days=7)
         schedule.save(update_fields=["next_run_at"])
 
     return created
+
 
 
 def _run_days_before_now(schedule: TrainingSchedule):
