@@ -14,7 +14,7 @@ app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
     "process-training-schedules-every-5-min": {
-        "task": "app.tasks.process_training_schedules",
+        "task": "dochadzka_app.tasks.process_training_schedules",
         "schedule": crontab(minute="*/5"),
     },
 }

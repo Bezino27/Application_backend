@@ -11,7 +11,8 @@ from .models import (
     TrainingAttendance,
     Match,
     MatchParticipation,
-    Announcement,AnnouncementRead, ExpoPushToken, Message, MessageReaction, MatchNomination, ClubPaymentSettings, MemberPayment,OrderPayment, JerseyOrder
+    Announcement,AnnouncementRead, ExpoPushToken, Message, MessageReaction, MatchNomination, ClubPaymentSettings, 
+    MemberPayment,OrderPayment, JerseyOrder, TrainingSchedule, TrainingScheduleItem
 )
 
 
@@ -169,6 +170,14 @@ class AnnouncementReadAdmin(admin.ModelAdmin):
     list_display = ("announcement", "user", "read_at")
     list_filter = ("announcement__club", "read_at")
 
+@admin.register(TrainingSchedule)
+class TrainingScheduleAdmin(admin.ModelAdmin):
+    list_display = [field.name for field in TrainingSchedule._meta.fields]    
+
+
+@admin.register(TrainingScheduleItem)
+class TrainingScheduleItemAdmin(admin.ModelAdmin):
+    list_display = [field.name for field in TrainingScheduleItem._meta.fields]    
 
 from django.contrib import admin
 from .models import Position, User
