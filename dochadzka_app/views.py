@@ -4102,21 +4102,8 @@ def training_schedule_detail(request, schedule_id: int):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    # aby update fungoval s nested items, spravíme to ručne:
-    # 1) update schedule fields
-    validated = serializer.validated_data
-    items_data = validated.pop("items", [])
+    schedule = serializer.save()
 
-    for k, v in validated.items():
-        setattr(schedule, k, v)
-    schedule.save()
-
-    # 2) prepis items (delete + create)
-    schedule.items.all().delete()
-    for item in items_data:
-        TrainingScheduleItem.objects.create(schedule=schedule, **item)
-
-    # 3) nastav next_run_at nanovo (podľa stratégie)
     _set_next_run_at(schedule)
     schedule.save(update_fields=["next_run_at"])
 
