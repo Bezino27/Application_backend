@@ -1449,7 +1449,7 @@ def match_stats_view(request, match_id):
         return Response({"error": "Zápas neexistuje"}, status=404)
 
     if request.method == "GET":
-        nominations = MatchNomination.objects.filter(match=match).select_related('user__userprofile')
+        nominations = MatchNomination.objects.filter(match=match).select_related('user')
         serializer = MatchNominationUpdateSerializer(nominations, many=True)
         return Response(serializer.data)
 
@@ -2367,9 +2367,9 @@ def admin_member_payments_summary(request):
             "first_name": user.first_name or "",
             "last_name": user.last_name or "",
             "email": user.email or "",
-            "email_2": getattr(user, "email_2", None) or getattr(user, "userprofile", None) and getattr(user.userprofile, "email_2", ""),
-            "birth_date": getattr(user, "birth_date", None) or getattr(user, "userprofile", None) and getattr(user.userprofile, "birth_date", None),
-            "number": getattr(user, "number", None) or getattr(user, "userprofile", None) and getattr(user.userprofile, "number", ""),
+            "email_2": getattr(user, "email_2", None) or getattr(user, "user", None) and getattr(user, "email_2", ""),
+            "birth_date": getattr(user, "birth_date", None) or getattr(user, "user", None) and getattr(user, "birth_date", None),
+            "number": getattr(user, "number", None) or getattr(user, "user", None) and getattr(user, "number", ""),
             "all_payments_paid": all_paid,
         })
 
@@ -3715,7 +3715,7 @@ def delete_account_view(request):
 
         # 🔹 vymaž profil, ak existuje
         if hasattr(user, "userprofile"):
-            user.userprofile.delete()
+            user.delete()
 
         # 🔹 vymaž roly, ak ich má
         if hasattr(user, "roles"):
@@ -4050,7 +4050,7 @@ def _set_next_run_at(schedule: TrainingSchedule):
 def training_schedules_list_create(request):
     user = request.user
     try:
-        club = user.userprofile.club
+        club = user.club
     except Exception:
         return Response({"detail": "Používateľ nemá priradený klub."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -4080,7 +4080,7 @@ def training_schedules_list_create(request):
 def training_schedule_detail(request, schedule_id: int):
     user = request.user
     try:
-        club = user.userprofile.club
+        club = user.club
     except Exception:
         return Response({"detail": "Používateľ nemá priradený klub."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -4215,7 +4215,7 @@ def _run_days_before_now(schedule: TrainingSchedule):
 def training_schedule_run_now(request, schedule_id: int):
     user = request.user
     try:
-        club = user.userprofile.club
+        club = user.club
     except Exception:
         return Response({"detail": "Používateľ nemá priradený klub."}, status=status.HTTP_400_BAD_REQUEST)
 
