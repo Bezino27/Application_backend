@@ -766,3 +766,67 @@ class FormationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Formation
         fields = ["id", "name", "category", "lines"]
+
+# dochadzka_app/serializers.py
+from rest_framework import serializers
+from django.utils import timezone
+from datetime import timedelta
+
+from .models import TrainingSchedule, TrainingScheduleItem
+
+
+class TrainingScheduleItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TrainingScheduleItem
+        fields = ["id", "weekday", "time", "location", "description"]
+
+
+class TrainingScheduleSerializer(serializers.ModelSerializer):
+    items = TrainingScheduleItemSerializer(many=True)
+
+    class Meta:
+        model = TrainingSchedule
+        fields = [
+            "id",
+            "club", "category",
+            "start_date", "end_date",
+            "strategy",
+            "batch_weekday", "batch_time",
+            "days_before",
+            "is_active",
+            "next_run_at",
+            "items",
+        ]
+        read_only_fields = ["club", "next_run_at"]
+
+    def validate(self, attrs):
+        start_date = attrs.get("start_date", getattr(self.instance, "start_date", None))
+        end_date = attrs.get("end_date", getattr(self.instance, "end_date", None))
+        strategy = attrs.get("strategy", getattr(self.instance, "strategy", None))
+        batch_weekday = attrs.get("batch_weekday", getattr(self.instance, "batch_weekday", None))
+        batch_time = attrs.get("batch_time", getattr(self.instance, "batch_time", None))
+        days_before = attrs.get("days_before", getattr(self.instance, "days_before", None))
+
+        if start_date and end_date and end_date < start_date:
+            raise serializers.ValidationError("end_date nemôže byť pred start_date.")
+
+        if strategy == TrainingSchedule.STRATEGY_WEEKLY_BATCH:
+            if batch_weekday is None or batch_time is None:
+                raise serializers.ValidationError("Pre weekly_batch musíš nastaviť batch_weekday a batch_time.")
+            if days_before not in (None, 0):
+                raise serializers.ValidationError("Pre weekly_batch nenastavuj days_before.")
+
+        if strategy == TrainingSchedule.STRATEGY_DAYS_BEFORE:
+            if days_before is None:
+                raise serializers.ValidationError("Pre days_before musíš nastaviť days_before (napr. 3).")
+            if batch_weekday is not None or batch_time is not None:
+                raise serializers.ValidationError("Pre days_before nenastavuj batch_weekday ani batch_time.")
+            if days_before > 60:
+                raise serializers.ValidationError("days_before je príliš veľké (max 60).")
+
+        # items validácia (aspoň jeden)
+        items = attrs.get("items", None)
+        if items is not None and len(items) == 0:
+            raise serializers.ValidationError("Musíš poslať aspoň jeden tréning v items.")
+
+        return attrs

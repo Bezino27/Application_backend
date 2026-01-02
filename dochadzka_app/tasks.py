@@ -544,3 +544,116 @@ def send_unpaid_payment_notifications(user_ids):
                 count += 1
 
     return f"📩 Sent {count} notifications to unpaid members."
+
+
+
+# app/tasks.py
+from celery import shared_task
+from django.utils import timezone
+from datetime import datetime, timedelta
+
+from .models import TrainingSchedule, Training
+from django.db import transaction
+
+def _week_start(d):
+    # pondelok daného týždňa
+    return d - timedelta(days=d.weekday())
+
+def _dt_for_weekday(week_monday_date, weekday, t):
+    day_date = week_monday_date + timedelta(days=weekday)
+    return timezone.make_aware(datetime.combine(day_date, t))
+
+@shared_task
+def process_training_schedules():
+    now = timezone.localtime()
+
+    schedules = TrainingSchedule.objects.filter(is_active=True, next_run_at__isnull=False, next_run_at__lte=now)\
+                                        .prefetch_related("items")
+
+    for s in schedules:
+        if s.strategy == TrainingSchedule.STRATEGY_WEEKLY_BATCH:
+            _run_weekly_batch(s, now)
+        else:
+            _run_days_before(s, now)
+
+def _run_weekly_batch(schedule: TrainingSchedule, now):
+    """
+    Batch: v konkrétny deň/čas vytvor všetky tréningy na ďalší týždeň.
+    """
+    today = timezone.localdate()
+    next_week_monday = _week_start(today) + timedelta(days=7)  # ďalší pondelok
+    next_week_sunday = next_week_monday + timedelta(days=6)
+
+    # orež do rozsahu schedule
+    start = max(schedule.start_date, next_week_monday)
+    end = min(schedule.end_date, next_week_sunday)
+
+    if end < start:
+        # mimo rozsah -> len posuň next_run_at o 7 dní
+        schedule.next_run_at = schedule.next_run_at + timedelta(days=7)
+        schedule.save(update_fields=["next_run_at"])
+        return
+
+    with transaction.atomic():
+        for item in schedule.items.all():
+            dt = _dt_for_weekday(next_week_monday, item.weekday, item.time)
+            dt_date = dt.date()
+
+            if dt_date < start or dt_date > end:
+                continue
+
+            Training.objects.get_or_create(
+                club=schedule.club,
+                category=schedule.category,
+                date=dt,
+                defaults={
+                    "description": item.description,
+                    "location": item.location,
+                    "created_by": schedule.created_by,
+                }
+            )
+
+    # ďalší batch o 7 dní v rovnaký deň/čas
+    schedule.next_run_at = schedule.next_run_at + timedelta(days=7)
+    schedule.save(update_fields=["next_run_at"])
+
+
+def _run_days_before(schedule: TrainingSchedule, now):
+    """
+    Days-before: vytvor tréningy, ktoré majú byť vytvorené dnes (t.j. udalosť je o X dní).
+    V praxi to znamená:
+      target_date = dnes + days_before
+      ak target_date je pondelok -> vytvor item s weekday=0, atď.
+    """
+    today = timezone.localdate()
+    target_date = today + timedelta(days=schedule.days_before or 0)
+
+    # ak target_date mimo rozsah, len posuň next_run_at na zajtra
+    if target_date < schedule.start_date or target_date > schedule.end_date:
+        schedule.next_run_at = (now + timedelta(days=1)).replace(hour=2, minute=10, second=0, microsecond=0)
+        schedule.save(update_fields=["next_run_at"])
+        return
+
+    target_weekday = target_date.weekday()
+
+    with transaction.atomic():
+        for item in schedule.items.all():
+            if item.weekday != target_weekday:
+                continue
+
+            dt = timezone.make_aware(datetime.combine(target_date, item.time))
+
+            Training.objects.get_or_create(
+                club=schedule.club,
+                category=schedule.category,
+                date=dt,
+                defaults={
+                    "description": item.description,
+                    "location": item.location,
+                    "created_by": schedule.created_by,
+                }
+            )
+
+    # spúšťaj to denne (napr. 02:10) – aby to bolo konzistentné
+    schedule.next_run_at = (now + timedelta(days=1)).replace(hour=2, minute=10, second=0, microsecond=0)
+    schedule.save(update_fields=["next_run_at"])

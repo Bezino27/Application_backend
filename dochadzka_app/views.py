@@ -4000,3 +4000,244 @@ def remind_unpaid_payments(request):
     send_unpaid_payment_notifications.delay(user_ids)
 
     return Response({"detail": f"Pripomienky boli odoslané {len(user_ids)} používateľom."})
+
+
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.utils import timezone
+from datetime import datetime, timedelta
+from django.db import transaction
+
+from .models import TrainingSchedule, TrainingScheduleItem, Training
+from .serializers import TrainingScheduleSerializer
+from .tasks import process_training_schedules
+
+
+def _next_weekday_time(now, weekday: int, t):
+    """
+    Najbližší datetime na zadaný weekday (0=Po) a čas t.
+    """
+    target = now.replace(hour=t.hour, minute=t.minute, second=0, microsecond=0)
+    days_ahead = (weekday - now.weekday()) % 7
+    target = target + timedelta(days=days_ahead)
+    if target <= now:
+        target += timedelta(days=7)
+    return target
+
+
+def _next_daily_0210(now):
+    target = now.replace(hour=2, minute=10, second=0, microsecond=0)
+    if target <= now:
+        target += timedelta(days=1)
+    return target
+
+
+def _set_next_run_at(schedule: TrainingSchedule):
+    now = timezone.localtime()
+
+    if schedule.strategy == TrainingSchedule.STRATEGY_WEEKLY_BATCH:
+        # musí mať batch_weekday & batch_time
+        schedule.next_run_at = _next_weekday_time(now, schedule.batch_weekday, schedule.batch_time)
+    else:
+        schedule.next_run_at = _next_daily_0210(now)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAuthenticated])
+def training_schedules_list_create(request):
+    user = request.user
+    try:
+        club = user.userprofile.club
+    except Exception:
+        return Response({"detail": "Používateľ nemá priradený klub."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == "GET":
+        qs = TrainingSchedule.objects.filter(club=club).prefetch_related("items").order_by("-id")
+        return Response(TrainingScheduleSerializer(qs, many=True).data)
+
+    # POST
+    data = request.data.copy()
+    serializer = TrainingScheduleSerializer(data=data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    schedule = serializer.save(club=club, created_by=user)
+
+    # nastav next_run_at
+    _set_next_run_at(schedule)
+    schedule.save(update_fields=["next_run_at"])
+
+    # vráť fresh data aj s next_run_at
+    schedule = TrainingSchedule.objects.prefetch_related("items").get(id=schedule.id)
+    return Response(TrainingScheduleSerializer(schedule).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["GET", "PUT", "DELETE"])
+@permission_classes([IsAuthenticated])
+def training_schedule_detail(request, schedule_id: int):
+    user = request.user
+    try:
+        club = user.userprofile.club
+    except Exception:
+        return Response({"detail": "Používateľ nemá priradený klub."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        schedule = TrainingSchedule.objects.prefetch_related("items").get(id=schedule_id, club=club)
+    except TrainingSchedule.DoesNotExist:
+        return Response({"detail": "Rozvrh neexistuje."}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "GET":
+        return Response(TrainingScheduleSerializer(schedule).data)
+
+    if request.method == "DELETE":
+        schedule.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    # PUT (update + items)
+    data = request.data.copy()
+    serializer = TrainingScheduleSerializer(schedule, data=data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # aby update fungoval s nested items, spravíme to ručne:
+    # 1) update schedule fields
+    validated = serializer.validated_data
+    items_data = validated.pop("items", [])
+
+    for k, v in validated.items():
+        setattr(schedule, k, v)
+    schedule.save()
+
+    # 2) prepis items (delete + create)
+    schedule.items.all().delete()
+    for item in items_data:
+        TrainingScheduleItem.objects.create(schedule=schedule, **item)
+
+    # 3) nastav next_run_at nanovo (podľa stratégie)
+    _set_next_run_at(schedule)
+    schedule.save(update_fields=["next_run_at"])
+
+    schedule = TrainingSchedule.objects.prefetch_related("items").get(id=schedule.id)
+    return Response(TrainingScheduleSerializer(schedule).data)
+
+
+def _week_start(d):
+    return d - timedelta(days=d.weekday())
+
+def _dt_for_weekday(week_monday_date, weekday, t):
+    day_date = week_monday_date + timedelta(days=weekday)
+    return timezone.make_aware(datetime.combine(day_date, t))
+
+def _run_weekly_batch_now(schedule: TrainingSchedule):
+    today = timezone.localdate()
+    next_week_monday = _week_start(today) + timedelta(days=7)
+    next_week_sunday = next_week_monday + timedelta(days=6)
+
+    start = max(schedule.start_date, next_week_monday)
+    end = min(schedule.end_date, next_week_sunday)
+    if end < start:
+        return 0
+
+    created = 0
+    with transaction.atomic():
+        for item in schedule.items.all():
+            dt = _dt_for_weekday(next_week_monday, item.weekday, item.time)
+            dt_date = dt.date()
+            if dt_date < start or dt_date > end:
+                continue
+
+            _, was_created = Training.objects.get_or_create(
+                club=schedule.club,
+                category=schedule.category,
+                date=dt,
+                defaults={
+                    "description": item.description,
+                    "location": item.location,
+                    "created_by": schedule.created_by,
+                }
+            )
+            if was_created:
+                created += 1
+
+    # po manuálnom run posuň next_run_at rovnako ako task (o 7 dní)
+    if schedule.next_run_at:
+        schedule.next_run_at = schedule.next_run_at + timedelta(days=7)
+        schedule.save(update_fields=["next_run_at"])
+
+    return created
+
+
+def _run_days_before_now(schedule: TrainingSchedule):
+    now = timezone.localtime()
+    today = timezone.localdate()
+    target_date = today + timedelta(days=schedule.days_before or 0)
+
+    if target_date < schedule.start_date or target_date > schedule.end_date:
+        # posuň na zajtra 02:10
+        schedule.next_run_at = (now + timedelta(days=1)).replace(hour=2, minute=10, second=0, microsecond=0)
+        schedule.save(update_fields=["next_run_at"])
+        return 0
+
+    target_weekday = target_date.weekday()
+    created = 0
+
+    with transaction.atomic():
+        for item in schedule.items.all():
+            if item.weekday != target_weekday:
+                continue
+
+            dt = timezone.make_aware(datetime.combine(target_date, item.time))
+
+            _, was_created = Training.objects.get_or_create(
+                club=schedule.club,
+                category=schedule.category,
+                date=dt,
+                defaults={
+                    "description": item.description,
+                    "location": item.location,
+                    "created_by": schedule.created_by,
+                }
+            )
+            if was_created:
+                created += 1
+
+    schedule.next_run_at = (now + timedelta(days=1)).replace(hour=2, minute=10, second=0, microsecond=0)
+    schedule.save(update_fields=["next_run_at"])
+    return created
+
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def training_schedule_run_now(request, schedule_id: int):
+    user = request.user
+    try:
+        club = user.userprofile.club
+    except Exception:
+        return Response({"detail": "Používateľ nemá priradený klub."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        schedule = TrainingSchedule.objects.prefetch_related("items").get(id=schedule_id, club=club)
+    except TrainingSchedule.DoesNotExist:
+        return Response({"detail": "Rozvrh neexistuje."}, status=status.HTTP_404_NOT_FOUND)
+
+    if not schedule.is_active:
+        return Response({"detail": "Rozvrh je neaktívny."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if schedule.strategy == TrainingSchedule.STRATEGY_WEEKLY_BATCH:
+        created = _run_weekly_batch_now(schedule)
+    else:
+        created = _run_days_before_now(schedule)
+
+    return Response({"created": created})
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def training_schedules_process_now(request):
+    # spustí synchronne rovnakú logiku ako celery task
+    process_training_schedules()
+    return Response({"detail": "OK"})
+
+

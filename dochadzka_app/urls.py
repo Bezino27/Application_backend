@@ -18,7 +18,11 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     update_member_payment, remind_attendance_view, remind_match_attendance_view, orders_payments,generate_payment,
                     admin_member_payments_summary, new_members_without_payments,cancel_order_item_view, order_delete_view, create_jersey_order,
                     check_number, jersey_orders_list, jersey_order_delete_view, jersey_orders_bulk_update, generate_jersey_payment, create_order, remind_unpaid_payments,
-                    formation_detail, formations_by_category,add_line_to_formation,formation_player_manage, players_in_category, formation_with_attendance, delete_account_view)
+                    formation_detail, formations_by_category,add_line_to_formation,formation_player_manage, players_in_category, formation_with_attendance, delete_account_view,training_schedules_list_create,
+                    training_schedule_detail,
+                    training_schedule_run_now,
+                    training_schedules_process_now,
+)
 
 urlpatterns = [
     path('me/', me_view, name='me'),
@@ -128,6 +132,13 @@ urlpatterns = [
     path('coach-trainings-optimalization/', coach_trainings_view_optimalization),
     path("jersey-orders/remind-unpaid/", remind_unpaid_orders_view),
     path("admin-member-payments/remind-unpaid/", remind_unpaid_payments),
+    path("training-schedules/", training_schedules_list_create, name="training-schedules"),
+    path("training-schedules/<int:schedule_id>/", training_schedule_detail, name="training-schedule-detail"),
+    path("training-schedules/<int:schedule_id>/run-now/", training_schedule_run_now, name="training-schedule-run-now"),
+    path("training-schedules/process-now/", training_schedules_process_now, name="training-schedules-process-now"),
+
+
+
 
 
 

@@ -73,6 +73,12 @@ class Training(models.Model):
     location = models.CharField(max_length=255)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["club", "category", "date"], name="uniq_training_club_category_date")
+        ]
+
+
     def __str__(self):
         return f"Tréning {self.category.name} - {self.date.strftime('%Y-%m-%d %H:%M')}"
 
@@ -393,3 +399,75 @@ class FormationPlayer(models.Model):
     line = models.ForeignKey(FormationLine, on_delete=models.CASCADE, related_name="players")
     player = models.ForeignKey(User, on_delete=models.CASCADE)
     position = models.CharField(max_length=3, choices=[("LW", "LW"), ("C", "C"), ("RW", "RW"), ("LD", "LD"), ("RD", "RD"), ("N", "N")])
+
+
+# app/models.py
+from django.db import models
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta, datetime, time, date
+
+class TrainingSchedule(models.Model):
+    STRATEGY_WEEKLY_BATCH = "weekly_batch"
+    STRATEGY_DAYS_BEFORE = "days_before"
+
+    STRATEGY_CHOICES = [
+        (STRATEGY_WEEKLY_BATCH, "Vytvoriť všetky tréningy na ďalší týždeň v konkrétny deň/čas"),
+        (STRATEGY_DAYS_BEFORE, "Vytvárať tréning X dní pred udalosťou"),
+    ]
+
+    WEEKDAYS = [
+        (0, "Pondelok"),
+        (1, "Utorok"),
+        (2, "Streda"),
+        (3, "Štvrtok"),
+        (4, "Piatok"),
+        (5, "Sobota"),
+        (6, "Nedeľa"),
+    ]
+
+    club = models.ForeignKey("Club", on_delete=models.CASCADE, related_name="training_schedules")
+    category = models.ForeignKey("Category", on_delete=models.CASCADE, related_name="training_schedules")
+
+    # platnosť rozvrhu
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    strategy = models.CharField(max_length=32, choices=STRATEGY_CHOICES)
+
+    # --- STRATEGY_WEEKLY_BATCH ---
+    batch_weekday = models.IntegerField(choices=WEEKDAYS, null=True, blank=True)  # napr. Sobota
+    batch_time = models.TimeField(null=True, blank=True)  # napr. 15:00
+
+    # --- STRATEGY_DAYS_BEFORE ---
+    days_before = models.PositiveIntegerField(null=True, blank=True)  # napr. 3
+
+    is_active = models.BooleanField(default=True)
+
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    # interné polia plánovania
+    next_run_at = models.DateTimeField(null=True, blank=True)  # kedy má schedule najbližšie generovať
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Schedule {self.category} {self.start_date}–{self.end_date} ({self.strategy})"
+
+    def clean(self):
+        # voliteľné: môžeš doplniť validácie aj tu, ale my ich spravíme v serializeroch
+        pass
+
+
+class TrainingScheduleItem(models.Model):
+    WEEKDAYS = TrainingSchedule.WEEKDAYS
+
+    schedule = models.ForeignKey(TrainingSchedule, on_delete=models.CASCADE, related_name="items")
+    weekday = models.IntegerField(choices=WEEKDAYS)  # Po=0 .. Ne=6
+    time = models.TimeField()                       # 16:30
+    location = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.schedule.category}: {self.weekday} {self.time}"
+
+
