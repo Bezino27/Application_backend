@@ -547,6 +547,36 @@ def send_unpaid_payment_notifications(user_ids):
 
 
 
+@shared_task
+def send_weekly_batch_created_notification(category_id: int, count: int, week_start: str, week_end: str):
+    from dochadzka_app.models import Role, ExpoPushToken
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+
+    players = User.objects.filter(
+        roles__category_id=category_id,
+        roles__role=Role.PLAYER
+    ).distinct()
+
+    title = "Tréningy vygenerované"
+    body = f"Vytvorené tréningy na nasledujúci týždeň ({week_start} – {week_end}). Počet: {count}"
+
+    for player in players:
+        tokens = ExpoPushToken.objects.filter(user=player).values_list("token", flat=True)
+        for token in tokens:
+            try:
+                send_push_notification(
+                    token,
+                    title,
+                    body,
+                    user_id=0,
+                    user_name="rozvrh"
+                )
+            except Exception as e:
+                logger.warning(f"Chyba pri push batch pre {player.username} → {token}: {str(e)}")
+
+
+
 # app/tasks.py
 from celery import shared_task
 from django.utils import timezone
@@ -594,6 +624,8 @@ def _run_weekly_batch(schedule: TrainingSchedule, now):
         schedule.save(update_fields=["next_run_at"])
         return
 
+    created_ids = []
+
     with transaction.atomic():
         for item in schedule.items.all():
             dt = _dt_for_weekday(next_week_monday, item.weekday, item.time)
@@ -602,7 +634,7 @@ def _run_weekly_batch(schedule: TrainingSchedule, now):
             if dt_date < start or dt_date > end:
                 continue
 
-            Training.objects.get_or_create(
+            training, was_created = Training.objects.get_or_create(
                 club=schedule.club,
                 category=schedule.category,
                 date=dt,
@@ -613,6 +645,16 @@ def _run_weekly_batch(schedule: TrainingSchedule, now):
                 }
             )
 
+            if was_created:
+                created_ids.append(training.id)
+
+    if created_ids:
+        send_weekly_batch_created_notification.delay(
+            schedule.category_id,
+            len(created_ids),
+            str(next_week_monday),
+            str(next_week_sunday),
+        )
     # ďalší batch o 7 dní v rovnaký deň/čas
     schedule.next_run_at = schedule.next_run_at + timedelta(days=7)
     schedule.save(update_fields=["next_run_at"])
@@ -643,7 +685,7 @@ def _run_days_before(schedule: TrainingSchedule, now):
 
             dt = timezone.make_aware(datetime.combine(target_date, item.time))
 
-            Training.objects.get_or_create(
+            training, was_created = Training.objects.get_or_create(
                 club=schedule.club,
                 category=schedule.category,
                 date=dt,
@@ -653,6 +695,10 @@ def _run_days_before(schedule: TrainingSchedule, now):
                     "created_by": schedule.created_by,
                 }
             )
+
+            if was_created:
+                send_training_notifications.delay(training.id)
+
 
     # spúšťaj to denne (napr. 02:10) – aby to bolo konzistentné
     schedule.next_run_at = (now + timedelta(days=1)).replace(hour=2, minute=10, second=0, microsecond=0)
