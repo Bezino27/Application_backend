@@ -49,13 +49,13 @@ AUTH_USER_MODEL = 'dochadzka_app.User'
 
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.m1.websupport.sk"
-EMAIL_PORT = 465
+EMAIL_HOST = "smtp.websupport.sk"
+EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
 EMAIL_HOST_USER = "support@ludimus.sk"
 EMAIL_HOST_PASSWORD = "Tomik7727."      # heslo k schránke
-DEFAULT_FROM_EMAIL = "Ludimus <support@ludimus.sk>"
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 EMAIL_TIMEOUT = 15
 
 
