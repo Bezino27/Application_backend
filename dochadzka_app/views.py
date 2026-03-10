@@ -66,20 +66,42 @@ def me_view(request):
     return Response(data)
 
 
-@csrf_exempt  # Dočasne vypne CSRF ochranu, ak testuješ cez Postman/React
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.models import User
+from django.http import JsonResponse
+import json
+from django.views.decorators.csrf import csrf_exempt
+
+
+@csrf_exempt
 def login_view(request):
     if request.method == "POST":
         data = json.loads(request.body)
-        username = data.get("username")
+        username_or_email = data.get("username")
         password = data.get("password")
+
+        # ak obsahuje @ -> je to email
+        if "@" in username_or_email:
+            try:
+                user_obj = User.objects.get(email=username_or_email)
+                username = user_obj.username
+            except User.DoesNotExist:
+                return JsonResponse({"message": "Login failed"}, status=401)
+        else:
+            username = username_or_email
+
         user = authenticate(username=username, password=password)
+
         if user is not None:
             login(request, user)
-            return JsonResponse({"message": "Login successful", "username": user.username})
+            return JsonResponse({
+                "message": "Login successful",
+                "username": user.username
+            })
         else:
             return JsonResponse({"message": "Login failed"}, status=401)
-    return JsonResponse({"message": "Method not allowed"}, status=405)
 
+    return JsonResponse({"message": "Method not allowed"}, status=405)
 
 
 
