@@ -815,3 +815,33 @@ class TrainingScheduleSerializer(serializers.ModelSerializer):
             ])
 
         return instance
+    
+
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.exceptions import AuthenticationFailed
+
+User = get_user_model()
+
+
+class EmailOrUsernameTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        username_or_email = attrs.get("username")
+        password = attrs.get("password")
+
+        if not username_or_email or not password:
+            raise AuthenticationFailed("Zadaj email alebo používateľské meno a heslo.")
+
+        username = username_or_email
+
+        if "@" in username_or_email:
+            try:
+                user = User.objects.get(email__iexact=username_or_email)
+                username = user.username
+            except User.DoesNotExist:
+                raise AuthenticationFailed("Neplatné prihlasovacie údaje.")
+            except User.MultipleObjectsReturned:
+                raise AuthenticationFailed("Viac účtov s rovnakým emailom.")
+
+        attrs["username"] = username
+        return super().validate(attrs)

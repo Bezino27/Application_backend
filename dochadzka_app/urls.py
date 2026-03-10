@@ -21,12 +21,12 @@ from .views import (me_view, login_view, save_expo_push_token, register_user, ch
                     formation_detail, formations_by_category,add_line_to_formation,formation_player_manage, players_in_category, formation_with_attendance, delete_account_view,training_schedules_list_create,
                     training_schedule_detail,
                     training_schedule_run_now,
-                    training_schedules_process_now,
+                    training_schedules_process_now,EmailOrUsernameTokenObtainPairView,
 )
 
 urlpatterns = [
     path('me/', me_view, name='me'),
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/', EmailOrUsernameTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('login/', login_view, name="login"),
     path('categories/<int:club_id>/', get_categories, name='get_categories'),

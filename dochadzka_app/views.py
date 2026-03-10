@@ -4245,3 +4245,10 @@ def training_schedules_process_now(request):
     return Response({"detail": "OK"})
 
 
+
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import EmailOrUsernameTokenObtainPairSerializer
+
+
+class EmailOrUsernameTokenObtainPairView(TokenObtainPairView):
+    serializer_class = EmailOrUsernameTokenObtainPairSerializer
