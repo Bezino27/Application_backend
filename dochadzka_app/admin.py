@@ -103,7 +103,7 @@ class MatchAdmin(admin.ModelAdmin):
 
 @admin.register(MatchParticipation)
 class MatchParticipationAdmin(admin.ModelAdmin):
-    list_display = ('match', 'user', 'confirmed')
+    list_display = ('match', 'user', 'confirmed', 'club')
     list_filter = ('confirmed', 'match__category__club')
     search_fields = ('user__username', 'match__category__name')
 
