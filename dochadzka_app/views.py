@@ -3854,6 +3854,12 @@ from rest_framework.response import Response
 from .models import Training, Category
 from .serializers import TrainingSerializer
 
+from datetime import datetime
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def player_trainings_history_view_optimalization(request):
@@ -3867,44 +3873,55 @@ def player_trainings_history_view_optimalization(request):
     season_param = request.GET.get("season")
     month_param = request.GET.get("month")
 
-    current_categories = Category.objects.filter(user_roles__user=user, user_roles__role="player")
-    trainings_from_roles = Training.objects.filter(club=club, category__in=current_categories)
-    trainings_from_attendance = Training.objects.filter(club=club, attendances__user=user)
+    current_categories = Category.objects.filter(
+        user_roles__user=user,
+        user_roles__role="player"
+    )
 
-    trainings = (trainings_from_roles | trainings_from_attendance).select_related(
+    trainings_from_roles = Training.objects.filter(
+        club=club,
+        category__in=current_categories
+    )
+
+    trainings_from_attendance = Training.objects.filter(
+        club=club,
+        attendances__user=user
+    )
+
+    trainings = (
+        trainings_from_roles | trainings_from_attendance
+    ).select_related(
         "category"
     ).prefetch_related(
         "attendances"
     ).distinct()
 
-    # ✅ Filter podľa sezóny
     if season_param:
         try:
             start_year, end_year = season_param.split("/")
             start = timezone.make_aware(datetime(int(start_year), 6, 1))
-            end = timezone.make_aware(datetime(int(end_year), 5, 31, 23, 59))
+            end = timezone.make_aware(datetime(int(end_year), 5, 31, 23, 59, 59))
             trainings = trainings.filter(date__range=(start, end))
         except ValueError:
             pass
 
-    # ✅ Filter podľa mesiaca
     if month_param is not None:
         try:
             month = int(month_param)
-            if month >= 0:  # -1 = všetky
+            if month >= 0:
                 trainings = trainings.filter(date__month=month + 1)
         except ValueError:
             pass
 
     trainings = trainings.order_by("date")
 
-    print(f"[DEBUG] season={season_param}, month={month_param}, count={trainings.count()}")
+    # len docasny test
+    print("VOLANY player_trainings_history_view_optimalization")
 
     serializer = TrainingSerializer(trainings, many=True, context={"request": request})
     return Response(serializer.data)
 
-
-
+    
 from datetime import datetime
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
