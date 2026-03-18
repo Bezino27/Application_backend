@@ -3409,7 +3409,7 @@ def password_reset_request(request):
         # Vytvor nový token
         token = ResetPasswordToken.objects.create(user=user)
         # Vytvor odkaz
-        reset_url = f"https://ludimus.sk/reset-password?token={token.key}"
+        reset_url = f"https://app.ludimus.sk/reset-password?token={token.key}"
         # Pošli e-mail
         user.email_user("🔑 Reset hesla Ludimus", f"Klikni na tento odkaz: {reset_url}")
         return Response({"detail": "Na email bol odoslaný odkaz na reset hesla"})
