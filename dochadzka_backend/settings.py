@@ -27,7 +27,7 @@ DEBUG = False
 CSRF_TRUSTED_ORIGINS = [
     "https://web-databaseurl-5e2d.up.railway.app",
 ]
-ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', 'web-databaseurl-5e2d.up.railway.app']
+ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', 'web-databaseurl-5e2d.up.railway.app', ]
 
 # Kde sa budú ukladať statické súbory pri deployi
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
@@ -112,7 +112,10 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://49.13.194.189",
     "http://49.13.194.189:8000",
-    "http://localhost:8081"
+    "http://localhost:8081",
+    "https://www.ludimus.sk",
+    "https://ludimus.sk",
+
 ]
 
 CORS_ALLOW_CREDENTIALS = True
