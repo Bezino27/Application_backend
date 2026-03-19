@@ -4347,3 +4347,76 @@ Správa:
             {"error": f"Správu sa nepodarilo odoslať. Detail: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def trial_request_view(request):
+    try:
+        name = (request.data.get("name") or "").strip()
+        club = (request.data.get("club") or "").strip()
+        email = (request.data.get("email") or "").strip()
+        phone = (request.data.get("phone") or "").strip()
+        members_count = (request.data.get("membersCount") or "").strip()
+        note = (request.data.get("note") or "").strip()
+        website = (request.data.get("website") or "").strip()  # honeypot
+
+        # 🛡️ anti-spam
+        if website:
+            return Response({"success": True}, status=status.HTTP_200_OK)
+
+        # ❗ validácia
+        if not name or not club or not email:
+            return Response(
+                {"error": "Meno, klub a email sú povinné."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            validate_email(email)
+        except ValidationError:
+            return Response(
+                {"error": "Neplatný email."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # 📧 email obsah
+        subject = f"Žiadosť o skúšobnú verziu – {club}"
+
+        text_message = f"""
+Nová žiadosť o 30-dňovú skúšobnú verziu
+
+Meno: {name}
+Klub: {club}
+Email: {email}
+Telefón: {phone if phone else "-"}
+Počet členov: {members_count if members_count else "-"}
+
+Poznámka:
+{note if note else "-"}
+""".strip()
+
+        # 📤 odoslanie
+        send_mail(
+            subject=subject,
+            message=text_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=["support@ludimus.sk"],
+            fail_silently=False,
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Žiadosť bola úspešne odoslaná. Čoskoro sa vám ozveme.",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    except Exception as e:
+        print("TRIAL_REQUEST_ERROR:", str(e))
+        traceback.print_exc()
+
+        return Response(
+            {"error": f"Server error: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
