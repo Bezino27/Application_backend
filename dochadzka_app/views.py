@@ -4269,3 +4269,79 @@ from .serializers import EmailOrUsernameTokenObtainPairSerializer
 
 class EmailOrUsernameTokenObtainPairView(TokenObtainPairView):
     serializer_class = EmailOrUsernameTokenObtainPairSerializer
+
+
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+
+@api_view(['POST'])
+def contact_form_view(request):
+    name = (request.data.get("name") or "").strip()
+    club = (request.data.get("club") or "").strip()
+    email = (request.data.get("email") or "").strip()
+    phone = (request.data.get("phone") or "").strip()
+    message = (request.data.get("message") or "").strip()
+    website = (request.data.get("website") or "").strip()  # honeypot proti spamu
+
+    # Ak bot vyplní skryté pole, tvár sa že je všetko OK
+    if website:
+        return Response({"success": True}, status=status.HTTP_200_OK)
+
+    if not name or not email or not message:
+        return Response(
+            {"error": "Meno, email a správa sú povinné."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        validate_email(email)
+    except ValidationError:
+        return Response(
+            {"error": "Neplatný email."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    subject = f"Nový kontakt z webu Ludimus – {name}"
+
+    text_message = f"""
+Nový kontakt z webu Ludimus
+
+Meno: {name}
+Klub: {club if club else "-"}
+Email: {email}
+Telefón: {phone if phone else "-"}
+
+Správa:
+{message}
+""".strip()
+
+    html_message = f"""
+        <h2>Nový kontakt z webu Ludimus</h2>
+        <p><strong>Meno:</strong> {name}</p>
+        <p><strong>Klub:</strong> {club if club else "-"}</p>
+        <p><strong>Email:</strong> {email}</p>
+        <p><strong>Telefón:</strong> {phone if phone else "-"}</p>
+        <p><strong>Správa:</strong></p>
+        <p>{message.replace(chr(10), "<br>")}</p>
+    """
+
+    try:
+        send_mail(
+            subject=subject,
+            message=text_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[settings.CONTACT_FORM_TO_EMAIL],
+            fail_silently=False,
+            html_message=html_message,
+        )
+    except Exception as e:
+        print("CONTACT_FORM_ERROR:", str(e))
+        return Response(
+            {"error": "Správu sa nepodarilo odoslať."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+    return Response(
+        {"success": True, "message": "Správa bola úspešne odoslaná."},
+        status=status.HTTP_200_OK
+    )
