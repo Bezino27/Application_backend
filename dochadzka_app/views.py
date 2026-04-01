@@ -4423,7 +4423,10 @@ Poznámka:
     
 
 from datetime import timedelta, date
+from collections import Counter
+
 from django.utils import timezone
+from django.db.models import Count
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -4449,18 +4452,21 @@ def coach_overview_view(request):
                 "total_players": 0,
                 "present_count": 0,
                 "absent_count": 0,
-                "unanswered_count": 0,
             },
             "categories": [],
             "attendance_trend": [],
             "player_attendance": [],
             "recent_trainings": [],
-            "status_distribution": [],
             "top_players": [],
             "bottom_players": [],
             "attendance_by_weekday": [],
             "attendance_by_category": [],
             "attendance_by_location": [],
+            "absence_reasons": [],
+            "top_absence_reasons": [],
+            "least_absence_reasons": [],
+            "absences_by_player": [],
+            "recent_absences": [],
             "engagement_summary": {
                 "low_attendance_players_count": 0,
                 "perfect_attendance_players_count": 0,
@@ -4491,7 +4497,7 @@ def coach_overview_view(request):
 
     now = timezone.now()
 
-    # ✅ len minulé / aktuálne tréningy, budúce vôbec neber
+    # len minulé + aktuálne tréningy, budúce sa vôbec nerátajú
     trainings = Training.objects.filter(
         category__in=selected_categories,
         date__lte=now
@@ -4532,7 +4538,6 @@ def coach_overview_view(request):
 
     present_count = attendances.filter(status='present').count()
     absent_count = attendances.filter(status='absent').count()
-    unanswered_count = attendances.filter(status='unanswered').count()
 
     average_attendance_percent = 0
     if total_trainings > 0 and total_players > 0:
@@ -4544,7 +4549,6 @@ def coach_overview_view(request):
         training_attendances = attendances.filter(training=training)
         present = training_attendances.filter(status='present').count()
         absent = training_attendances.filter(status='absent').count()
-        unanswered = training_attendances.filter(status='unanswered').count()
 
         category_players_count = players.filter(
             roles__category=training.category,
@@ -4564,7 +4568,6 @@ def coach_overview_view(request):
             "location": training.location,
             "present": present,
             "absent": absent,
-            "unanswered": unanswered,
             "attendance_percent": percent,
         })
 
@@ -4574,7 +4577,6 @@ def coach_overview_view(request):
 
         player_present = player_attendances.filter(status='present').count()
         player_absent = player_attendances.filter(status='absent').count()
-        player_unanswered = player_attendances.filter(status='unanswered').count()
 
         player_category_ids = player.roles.filter(
             role='player',
@@ -4593,30 +4595,20 @@ def coach_overview_view(request):
             "attendance_percent": attendance_percent,
             "present_count": player_present,
             "absent_count": player_absent,
-            "unanswered_count": player_unanswered,
             "trainings_count": denominator,
         })
 
-    # ✅ filter na hráčov pod minimálnu účasť
     filtered_player_attendance = [
         p for p in player_attendance
         if p["attendance_percent"] >= min_attendance_percent
     ]
-
     filtered_player_attendance.sort(key=lambda x: x["attendance_percent"], reverse=True)
 
     recent_trainings = list(reversed(attendance_trend[-8:]))
 
-    status_distribution = [
-        {"name": "Prišli", "value": present_count},
-        {"name": "Neprišli", "value": absent_count},
-        {"name": "Nezodpovedali", "value": unanswered_count},
-    ]
-
     top_players = filtered_player_attendance[:5]
     bottom_players = sorted(filtered_player_attendance, key=lambda x: x["attendance_percent"])[:5]
 
-    # ďalšie prehľady
     weekday_names = {
         0: "Pondelok",
         1: "Utorok",
@@ -4629,14 +4621,21 @@ def coach_overview_view(request):
 
     attendance_by_weekday = []
     for weekday in range(7):
-        weekday_trainings = [t for t in attendance_trend if timezone.datetime.fromisoformat(t["date"].replace("Z", "+00:00")).weekday() == weekday]
+        weekday_trainings = [t for t in trainings if t.date.weekday() == weekday]
         if not weekday_trainings:
             continue
 
-        avg_percent = round(
-            sum(t["attendance_percent"] for t in weekday_trainings) / len(weekday_trainings),
-            1
-        )
+        weekday_training_ids = [t.id for t in weekday_trainings]
+        weekday_present = attendances.filter(training_id__in=weekday_training_ids, status='present').count()
+
+        weekday_possible_slots = 0
+        for t in weekday_trainings:
+            weekday_possible_slots += players.filter(
+                roles__category=t.category,
+                roles__role='player'
+            ).distinct().count()
+
+        avg_percent = round((weekday_present / weekday_possible_slots) * 100, 1) if weekday_possible_slots > 0 else 0
 
         attendance_by_weekday.append({
             "weekday": weekday_names[weekday],
@@ -4646,25 +4645,33 @@ def coach_overview_view(request):
 
     attendance_by_category = []
     for category in selected_categories.order_by("name"):
-        category_trainings = [t for t in attendance_trend if t["category_id"] == category.id]
-        if not category_trainings:
+        category_trainings = trainings.filter(category=category)
+        if not category_trainings.exists():
             continue
 
-        avg_percent = round(
-            sum(t["attendance_percent"] for t in category_trainings) / len(category_trainings),
-            1
-        )
+        category_players_count = players.filter(
+            roles__category=category,
+            roles__role='player'
+        ).distinct().count()
+
+        category_present = attendances.filter(
+            training__category=category,
+            status='present'
+        ).count()
+
+        possible_slots = category_trainings.count() * category_players_count
+        avg_percent = round((category_present / possible_slots) * 100, 1) if possible_slots > 0 else 0
 
         attendance_by_category.append({
             "category_id": category.id,
             "category_name": category.name,
-            "trainings_count": len(category_trainings),
+            "trainings_count": category_trainings.count(),
             "average_attendance_percent": avg_percent,
         })
 
     location_map = {}
-    for training in attendance_trend:
-        location = training["location"] or "Nezadané"
+    for item in attendance_trend:
+        location = item["location"] or "Nezadané"
         if location not in location_map:
             location_map[location] = {
                 "location": location,
@@ -4673,17 +4680,71 @@ def coach_overview_view(request):
             }
 
         location_map[location]["trainings_count"] += 1
-        location_map[location]["attendance_sum"] += training["attendance_percent"]
+        location_map[location]["attendance_sum"] += item["attendance_percent"]
 
     attendance_by_location = []
-    for location, item in location_map.items():
+    for _, item in location_map.items():
         attendance_by_location.append({
-            "location": location,
+            "location": item["location"],
             "trainings_count": item["trainings_count"],
             "average_attendance_percent": round(item["attendance_sum"] / item["trainings_count"], 1),
         })
 
     attendance_by_location.sort(key=lambda x: x["trainings_count"], reverse=True)
+
+    # dôvody absencií
+    absence_reason_qs = (
+        attendances
+        .filter(status='absent')
+        .exclude(reason__isnull=True)
+        .exclude(reason__exact='')
+        .values('reason')
+        .annotate(count=Count('id'))
+        .order_by('-count', 'reason')
+    )
+
+    absence_reasons = [
+        {
+            "reason": item["reason"],
+            "count": item["count"],
+        }
+        for item in absence_reason_qs
+    ]
+
+    top_absence_reasons = absence_reasons[:5]
+    least_absence_reasons = list(reversed(absence_reasons[-5:])) if absence_reasons else []
+
+    # absencie podľa hráča
+    absences_by_player = []
+    for player in player_attendance:
+        if player["absent_count"] > 0:
+            absences_by_player.append({
+                "player_id": player["player_id"],
+                "name": player["name"],
+                "absent_count": player["absent_count"],
+            })
+
+    absences_by_player.sort(key=lambda x: x["absent_count"], reverse=True)
+    absences_by_player = absences_by_player[:10]
+
+    # posledné absencie
+    recent_absence_qs = (
+        attendances
+        .filter(status='absent')
+        .select_related('user', 'training', 'training__category')
+        .order_by('-training__date')[:10]
+    )
+
+    recent_absences = [
+        {
+            "player_name": f"{a.user.first_name} {a.user.last_name}".strip() or a.user.username,
+            "category_name": a.training.category.name,
+            "training_date": a.training.date.isoformat(),
+            "location": a.training.location,
+            "reason": a.reason or "Bez dôvodu",
+        }
+        for a in recent_absence_qs
+    ]
 
     engagement_summary = {
         "low_attendance_players_count": len([p for p in player_attendance if p["attendance_percent"] < 10]),
@@ -4698,7 +4759,6 @@ def coach_overview_view(request):
             "total_players": total_players,
             "present_count": present_count,
             "absent_count": absent_count,
-            "unanswered_count": unanswered_count,
         },
         "filters": {
             "min_attendance_percent": min_attendance_percent,
@@ -4710,11 +4770,15 @@ def coach_overview_view(request):
         "attendance_trend": attendance_trend,
         "player_attendance": filtered_player_attendance,
         "recent_trainings": recent_trainings,
-        "status_distribution": status_distribution,
         "top_players": top_players,
         "bottom_players": bottom_players,
         "attendance_by_weekday": attendance_by_weekday,
         "attendance_by_category": attendance_by_category,
         "attendance_by_location": attendance_by_location[:6],
+        "absence_reasons": absence_reasons,
+        "top_absence_reasons": top_absence_reasons,
+        "least_absence_reasons": least_absence_reasons,
+        "absences_by_player": absences_by_player,
+        "recent_absences": recent_absences,
         "engagement_summary": engagement_summary,
     })
