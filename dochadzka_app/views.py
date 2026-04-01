@@ -4420,3 +4420,203 @@ Poznámka:
             {"error": f"Server error: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+    
+
+from datetime import timedelta, date
+from django.utils import timezone
+from django.db.models import Q
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from .models import Category, Training, TrainingAttendance, User
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def coach_overview_view(request):
+    user = request.user
+
+    # kategórie, kde je user tréner
+    coach_categories = Category.objects.filter(
+        user_roles__user=user,
+        user_roles__role='coach'
+    ).distinct()
+
+    if not coach_categories.exists():
+        return Response({
+            "summary": {
+                "total_trainings": 0,
+                "average_attendance_percent": 0,
+                "total_players": 0,
+                "present_count": 0,
+                "absent_count": 0,
+                "unanswered_count": 0,
+            },
+            "categories": [],
+            "attendance_trend": [],
+            "player_attendance": [],
+            "recent_trainings": [],
+            "status_distribution": [],
+            "top_players": [],
+            "bottom_players": [],
+        })
+
+    category_id = request.GET.get("category_id")
+    period = request.GET.get("period", "30days")
+
+    selected_categories = coach_categories
+
+    if category_id:
+        try:
+            category_id = int(category_id)
+        except ValueError:
+            return Response({"error": "Neplatné category_id"}, status=400)
+
+        if not coach_categories.filter(id=category_id).exists():
+            return Response({"error": "Nemáš prístup k tejto kategórii"}, status=403)
+
+        selected_categories = coach_categories.filter(id=category_id)
+
+    now = timezone.now()
+    trainings = Training.objects.filter(category__in=selected_categories).select_related("category")
+
+    # filter obdobia
+    if period == "30days":
+        trainings = trainings.filter(date__gte=now - timedelta(days=30))
+    elif period == "90days":
+        trainings = trainings.filter(date__gte=now - timedelta(days=90))
+    elif period == "season":
+        # sezóna 1.6. - 31.5.
+        if now.month >= 6:
+            season_start = date(now.year, 6, 1)
+            season_end = date(now.year + 1, 5, 31)
+        else:
+            season_start = date(now.year - 1, 6, 1)
+            season_end = date(now.year, 5, 31)
+
+        trainings = trainings.filter(date__date__range=(season_start, season_end))
+    elif period == "all":
+        pass
+    else:
+        return Response({"error": "Neplatný period"}, status=400)
+
+    trainings = trainings.order_by("date")
+
+    # hráči v zvolených kategóriách
+    players = User.objects.filter(
+        roles__category__in=selected_categories,
+        roles__role='player'
+    ).distinct()
+
+    total_players = players.count()
+    total_trainings = trainings.count()
+
+    attendances = TrainingAttendance.objects.filter(
+        training__in=trainings,
+        user__in=players
+    ).select_related("user", "training", "training__category")
+
+    present_count = attendances.filter(status='present').count()
+    absent_count = attendances.filter(status='absent').count()
+    unanswered_count = attendances.filter(status='unanswered').count()
+
+    average_attendance_percent = 0
+    if total_trainings > 0 and total_players > 0:
+        possible_slots = total_trainings * total_players
+        average_attendance_percent = round((present_count / possible_slots) * 100, 1)
+
+    # trend účasti po tréningoch
+    attendance_trend = []
+    for training in trainings:
+        training_attendances = attendances.filter(training=training)
+        present = training_attendances.filter(status='present').count()
+        absent = training_attendances.filter(status='absent').count()
+        unanswered = training_attendances.filter(status='unanswered').count()
+
+        category_players_count = players.filter(
+            roles__category=training.category,
+            roles__role='player'
+        ).distinct().count()
+
+        percent = 0
+        if category_players_count > 0:
+            percent = round((present / category_players_count) * 100, 1)
+
+        attendance_trend.append({
+            "training_id": training.id,
+            "date": training.date.isoformat(),
+            "category_id": training.category.id,
+            "category_name": training.category.name,
+            "description": training.description,
+            "location": training.location,
+            "present": present,
+            "absent": absent,
+            "unanswered": unanswered,
+            "attendance_percent": percent,
+        })
+
+    # účasť hráčov
+    player_attendance = []
+    for player in players:
+        player_attendances = attendances.filter(user=player)
+
+        player_present = player_attendances.filter(status='present').count()
+        player_total = player_attendances.count()
+
+        # ak nie sú attendance záznamy pre všetky tréningy, dopočítame podľa reálne dostupných tréningov hráča v kategóriách
+        player_category_ids = player.roles.filter(
+            role='player',
+            category__in=selected_categories
+        ).values_list('category_id', flat=True).distinct()
+
+        player_trainings_count = trainings.filter(category_id__in=player_category_ids).count()
+
+        denominator = player_trainings_count if player_trainings_count > 0 else player_total
+        attendance_percent = round((player_present / denominator) * 100, 1) if denominator > 0 else 0
+
+        player_attendance.append({
+            "player_id": player.id,
+            "name": f"{player.first_name} {player.last_name}".strip() or player.username,
+            "number": player.number,
+            "attendance_percent": attendance_percent,
+            "present_count": player_present,
+            "trainings_count": denominator,
+        })
+
+    player_attendance.sort(key=lambda x: x["attendance_percent"], reverse=True)
+
+    # posledné tréningy
+    recent_trainings = list(reversed(attendance_trend[-8:]))
+
+    # status distribution pre graf
+    status_distribution = [
+        {"name": "Prítomní", "value": present_count},
+        {"name": "Neprítomní", "value": absent_count},
+        {"name": "Nezodpovedané", "value": unanswered_count},
+    ]
+
+    # top / bottom hráči
+    top_players = player_attendance[:5]
+    bottom_players = sorted(player_attendance, key=lambda x: x["attendance_percent"])[:5]
+
+    return Response({
+        "summary": {
+            "total_trainings": total_trainings,
+            "average_attendance_percent": average_attendance_percent,
+            "total_players": total_players,
+            "present_count": present_count,
+            "absent_count": absent_count,
+            "unanswered_count": unanswered_count,
+        },
+        "categories": [
+            {"id": c.id, "name": c.name}
+            for c in selected_categories.order_by("name")
+        ],
+        "attendance_trend": attendance_trend,
+        "player_attendance": player_attendance,
+        "recent_trainings": recent_trainings,
+        "status_distribution": status_distribution,
+        "top_players": top_players,
+        "bottom_players": bottom_players,
+    })
